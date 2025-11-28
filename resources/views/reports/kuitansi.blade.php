@@ -11,97 +11,97 @@
             margin-bottom: 5px;
         }
         /* Reset dasar & Font */
-        body { 
+        body {
             font-family: Arial, Helvetica, sans-serif; /* Font mirip mesin tik */
             font-size: 11pt; /* Sedikit lebih besar dari sebelumnya */
             line-height: 1.3;
             margin: 0; /* Hapus margin default */
             padding-top: 0;
         }
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
+        table {
+            width: 100%;
+            border-collapse: collapse;
         }
-        td, th { 
-            padding: 1px 2px; 
+        td, th {
+            padding: 1px 2px;
             vertical-align: top;
             word-wrap: break-word; /* <-- PAKSA WRAPPING JIKA PANJANG */
         }
 
         /* 1. KOP SURAT */
-        .kop { 
-            border-bottom: 1px solid black; 
-            padding-bottom: 3px; 
-            margin-bottom: 5px; 
+        .kop {
+            border-bottom: 1px solid black;
+            padding-bottom: 3px;
+            margin-bottom: 5px;
         }
-        .kop .logo { 
+        .kop .logo {
             width: 50px; /* Sesuaikan ukuran logo */
-            float: left; 
-            margin-right: 10px; 
+            float: left;
+            margin-right: 10px;
         }
-        .kop .rs-info { 
+        .kop .rs-info {
             /* float: left; Biarkan mengalir */
         }
-        .kop h4, .kop p { 
-            margin: 0; 
+        .kop h4, .kop p {
+            margin: 0;
             font-weight: bold;
         }
 
         /* 2. HEADER KUITANSI */
-        .header-kuitansi { 
-            text-align: center; 
-            font-weight: bold; 
-            font-size: 12pt; 
-            margin-bottom: 8px; 
+        .header-kuitansi {
+            text-align: center;
+            font-weight: bold;
+            font-size: 12pt;
+            margin-bottom: 8px;
         }
 
         /* 3. INFO PASIEN/TAGIHAN */
-        .info-table td { 
+        .info-table td {
             padding-bottom: 1px;
         }
-        .info-table .label { 
-            width: 15%; 
+        .info-table .label {
+            width: 15%;
         }
-        .info-table .separator { 
-            width: 2%; 
+        .info-table .separator {
+            width: 2%;
         }
-        .info-table .value { 
-            width: 33%; 
+        .info-table .value {
+            width: 33%;
         }
 
         /* 4. TABEL RINCIAN */
-        .rincian-table { 
-            margin-top: 5px; 
+        .rincian-table {
+            margin-top: 5px;
             border-top: 1px dashed black;
             border-bottom: 1px dashed black;
         }
-        .rincian-table th { 
-            text-align: left; 
+        .rincian-table th {
+            text-align: left;
             border-bottom: 1px dashed black;
             padding: 3px 2px;
         }
-        .rincian-table td { 
-            padding: 3px 2px; 
+        .rincian-table td {
+            padding: 3px 2px;
         }
         .rincian-table .no { width: 5%; text-align: center; }
         .rincian-table .uraian { width: 70%; }
         .rincian-table .subtotal { width: 25%; text-align: right; }
 
         /* 5. BAGIAN TOTAL */
-        .total-table { 
-            margin-top: 5px; 
+        .total-table {
+            margin-top: 5px;
         }
-        .total-table td { 
-            padding: 2px 4px; 
+        .total-table td {
+            padding: 2px 4px;
         }
-        .total-table .total-label { 
-            text-align: right; 
+        .total-table .total-label {
+            text-align: right;
             padding-right: 10px;
         }
-        .total-table .total-value { 
-            text-align: right; 
-            font-weight: bold; 
-            width: 25%; 
+        .total-table .total-value {
+            text-align: right;
+            font-weight: bold;
+            width: 25%;
         }
         .total-table .pasien-penjamin {
             text-align: right;
@@ -109,20 +109,20 @@
         }
 
         /* 6. TANDA TANGAN & FOOTER */
-        .ttd-table { 
-            margin-top: 5px; 
+        .ttd-table {
+            margin-top: 5px;
         }
-        .ttd-table td { 
-            text-align: center; 
-            width: 50%; 
-            padding-top: 2px; 
+        .ttd-table td {
+            text-align: center;
+            width: 50%;
+            padding-top: 2px;
         }
-        .ttd-table .signature-space { 
+        .ttd-table .signature-space {
             height: 30px; /* Ruang untuk tanda tangan */
         }
-        .footer-info { 
-            margin-top: 2px; 
-            font-size: 8pt; 
+        .footer-info {
+            margin-top: 2px;
+            font-size: 8pt;
         }
 
         /* Utility */
@@ -145,7 +145,8 @@
 
     {{-- 2. HEADER KUITANSI --}}
     <div class="header-kuitansi">
-        Kwitansi Rawat Jalan
+        <!-- Kwitansi Rawat Jalan -->
+        Kwitansi {{ $jenis_kasir_text }}
     </div>
 
     {{-- 3. INFO PASIEN/TAGIHAN --}}
@@ -238,10 +239,10 @@
                     - Rp. {{ number_format($head->diskon_simgos, 0, ',', '.') }}
                 </td>
             </tr>
-            
+
             {{-- Hitung Total Bersih --}}
-            @php 
-                $totalBersih = max(0, $grandTotal - $head->diskon_simgos); 
+            @php
+                $totalBersih = max(0, $grandTotal - $head->diskon_simgos);
             @endphp
 
             {{-- Baris 3: Langsung "Tagihan Pasien" dengan Total Bersih --}}
@@ -296,7 +297,7 @@
     {{-- 7. FOOTER INFO --}}
     <div class="footer-info">
         <p>Ket: Harga obat sudah termasuk PPN   |   Waktu : {{ \Carbon\Carbon::now()->format('H:i:s') }}</p>
-        
+
     </div>
 
 </body>

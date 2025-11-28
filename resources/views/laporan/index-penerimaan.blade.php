@@ -1,27 +1,21 @@
-@extends('layouts.laporan') {{-- <-- BERUBAH KE INDUK LAPORAN --}}
-
-@section('title', 'Laporan Penerimaan Kasir')
-
-{{-- Konten ini akan dimasukkan ke @yield('laporan_content') --}}
-@section('laporan_content')
-
-    @php
-        $jenis = [
-            1 => 'Rawat Jalan',
-            2 => 'IGD',
-            3 => 'Rawat Inap',
-        ];
-    @endphp
-
-    <div class="card shadow mb-4">
+@extends('layouts.laporan') {{-- <-- BERUBAH KE INDUK LAPORAN --}} @section('title', 'Laporan Penerimaan Kasir') {{--
+    Konten ini akan dimasukkan ke @yield('laporan_content') --}} @section('laporan_content') @php
+            $jenis = [
+                1 => 'Rawat Jalan',
+                2 => 'IGD',
+                3 => 'Rawat Inap',
+            ];
+        @endphp <div class="card shadow mb-4">
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">Filter Laporan Penerimaan
-                {{ $jenis[$jenis_kasir] ?? 'Nama belum ditambah' }}</h6>
+                {{ $jenis[$jenis_kasir] ?? 'Nama belum ditambah' }}
+            </h6>
         </div>
         <div class="card-body">
 
             {{-- Form Filter Tanggal --}}
             <form method="GET" action="{{ route('laporan.penerimaan.index') }}">
+                <input type="hidden" name="jenis" value="{{ $jenis_kasir }}">
                 <div class="row">
                     <div class="col-md-5">
                         <input type="date" class="form-control" name="tanggal" value="{{ $tanggalInput }}">
@@ -57,7 +51,7 @@
                                 <td class="text-right">Rp {{ number_format($sesi->total_penerimaan_sistem, 0, ',', '.') }}
                                 </td>
                                 <td>
-                                    <a href="{{ route('laporan.sesi.show', ['id' => $sesi->id]) }}"
+                                    <a href="{{ route('laporan.sesi.show', ['id' => $sesi->id, 'jenis' => $jenis_kasir]) }}"
                                         class="btn btn-sm btn-info">
                                         Lihat Detail
                                     </a>
@@ -79,6 +73,6 @@
             </div>
 
         </div>
-    </div>
+        </div>
 
-@endsection
+    @endsection

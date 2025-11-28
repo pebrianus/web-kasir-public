@@ -109,35 +109,35 @@
                                     $total_pasien = 0;
                                 @endphp
                                 @forelse ($detail as $item)
-                                    <tr>
-                                        <td>{{ $item->deskripsi_item }}</td>
-                                        <td class="text-right">{{ $item->qty }}</td>
-                                        <td class="text-right">
-                                            {{ fmod($item->harga_satuan, 1) !== 0.0
-                                                ? number_format($item->harga_satuan, 2, ',', '.')
-                                                : number_format($item->harga_satuan, 0, ',', '.') }}
-                                        </td>
-                                        <td class="text-right">
-                                            {{ fmod($item->subtotal, 1) !== 0.0
-                                                ? number_format($item->subtotal, 2, ',', '.')
-                                                : number_format($item->subtotal, 0, ',', '.') }}
-                                        </td>
-                                        <td class="text-right bg-light">
-                                            {{ fmod($item->nominal_ditanggung_asuransi, 1) !== 0.0
-                                                ? number_format($item->nominal_ditanggung_asuransi, 2, ',', '.')
-                                                : number_format($item->nominal_ditanggung_asuransi, 0, ',', '.') }}
-                                        </td>
-                                        <td class="text-right bg-light">
-                                            {{ fmod($item->nominal_ditanggung_pasien, 1) !== 0.0
-                                                ? number_format($item->nominal_ditanggung_pasien, 2, ',', '.')
-                                                : number_format($item->nominal_ditanggung_pasien, 0, ',', '.') }}
-                                        </td>
-                                    </tr>
-                                    @php
-                                        $total_asli += $item->subtotal;
-                                        $total_asuransi += $item->nominal_ditanggung_asuransi;
-                                        $total_pasien += $item->nominal_ditanggung_pasien;
-                                    @endphp
+                                                        <tr>
+                                                            <td>{{ $item->deskripsi_item }}</td>
+                                                            <td class="text-right">{{ $item->qty }}</td>
+                                                            <td class="text-right">
+                                                                {{ fmod($item->harga_satuan, 1) !== 0.0
+                                    ? number_format($item->harga_satuan, 2, ',', '.')
+                                    : number_format($item->harga_satuan, 0, ',', '.') }}
+                                                            </td>
+                                                            <td class="text-right">
+                                                                {{ fmod($item->subtotal, 1) !== 0.0
+                                    ? number_format($item->subtotal, 2, ',', '.')
+                                    : number_format($item->subtotal, 0, ',', '.') }}
+                                                            </td>
+                                                            <td class="text-right bg-light">
+                                                                {{ fmod($item->nominal_ditanggung_asuransi, 1) !== 0.0
+                                    ? number_format($item->nominal_ditanggung_asuransi, 2, ',', '.')
+                                    : number_format($item->nominal_ditanggung_asuransi, 0, ',', '.') }}
+                                                            </td>
+                                                            <td class="text-right bg-light">
+                                                                {{ fmod($item->nominal_ditanggung_pasien, 1) !== 0.0
+                                    ? number_format($item->nominal_ditanggung_pasien, 2, ',', '.')
+                                    : number_format($item->nominal_ditanggung_pasien, 0, ',', '.') }}
+                                                            </td>
+                                                        </tr>
+                                                        @php
+                                                            $total_asli += $item->subtotal;
+                                                            $total_asuransi += $item->nominal_ditanggung_asuransi;
+                                                            $total_pasien += $item->nominal_ditanggung_pasien;
+                                                        @endphp
                                 @empty
                                     <tr>
                                         <td colspan="5" class="text-center">Data rincian tidak ditemukan.</td>
@@ -151,26 +151,26 @@
                                     <td colspan="3" class="text-right font-weight-bold">
                                         Rp.
                                         {{ fmod($total_asli, 1) !== 0.0
-                                            ? number_format($total_asli, 2, ',', '.')
-                                            : number_format($total_asli, 0, ',', '.') }}
+        ? number_format($total_asli, 2, ',', '.')
+        : number_format($total_asli, 0, ',', '.') }}
                                     </td>
                                 </tr>
                                 {{-- +++ TAMBAHKAN INI UNTUK DISKON +++ --}}
                                 @if ($head->diskon_simgos > 0)
-                                <tr class="text-danger">
-                                    <td colspan="3" class="text-right font-weight-bold">POTONGAN / DISKON</td>
-                                    <td colspan="3" class="text-right font-weight-bold">
-                                        - Rp {{ number_format($head->diskon_simgos, 2, ',', '.') }}
-                                    </td>
-                                </tr>
-                                
-                                {{-- Tampilkan Total Akhir setelah diskon --}}
-                                <tr class="bg-light">
-                                    <td colspan="3" class="text-right font-weight-bold">TOTAL BERSIH (Setelah Diskon)</td>
-                                    <td colspan="3" class="text-right font-weight-bold">
-                                        Rp {{ number_format($total_asli - $head->diskon_simgos, 2, ',', '.') }}
-                                    </td>
-                                </tr>
+                                    <tr class="text-danger">
+                                        <td colspan="3" class="text-right font-weight-bold">POTONGAN / DISKON</td>
+                                        <td colspan="3" class="text-right font-weight-bold">
+                                            - Rp {{ number_format($head->diskon_simgos, 2, ',', '.') }}
+                                        </td>
+                                    </tr>
+
+                                    {{-- Tampilkan Total Akhir setelah diskon --}}
+                                    <tr class="bg-light">
+                                        <td colspan="3" class="text-right font-weight-bold">TOTAL BERSIH (Setelah Diskon)</td>
+                                        <td colspan="3" class="text-right font-weight-bold">
+                                            Rp {{ number_format($total_asli - $head->diskon_simgos, 2, ',', '.') }}
+                                        </td>
+                                    </tr>
                                 @endif
                                 {{-- +++ BATAS TAMBAHAN +++ --}}
                                 <tr>
@@ -178,8 +178,8 @@
                                     <td class="text-right font-weight-bold" colspan="3">
                                         Rp.
                                         {{ fmod($total_asuransi, 1) !== 0.0
-                                            ? number_format($total_asuransi, 2, ',', '.')
-                                            : number_format($total_asuransi, 0, ',', '.') }}
+        ? number_format($total_asuransi, 2, ',', '.')
+        : number_format($total_asuransi, 0, ',', '.') }}
                                     </td>
                                 </tr>
                                 <tr class="table-success">
@@ -191,8 +191,8 @@
                                             $total_pasien_bersih = max(0, $total_pasien - $head->diskon_simgos);
                                         @endphp
                                         {{ fmod($total_pasien_bersih, 1) !== 0.0
-                                            ? number_format($total_pasien_bersih, 2, ',', '.')
-                                            : number_format($total_pasien_bersih, 0, ',', '.') }}
+        ? number_format($total_pasien_bersih, 2, ',', '.')
+        : number_format($total_pasien_bersih, 0, ',', '.') }}
                                     </td>
                                 </tr>
                             </tfoot>
@@ -220,16 +220,15 @@
                             </form>
                         @endif
                         {{-- <a href="{{ route('kasir.pasien.tagihan', [
-                            'norm' => $head->simgos_norm,
-                            'jenis_kasir' => request('jenis_kasir'),
-                        ]) }}"
-                            class="btn btn-danger btn-sm" title="Kembali">
+                                    'norm' => $head->simgos_norm,
+                                    'jenis_kasir' => request('jenis_kasir'),
+                                ]) }}" class="btn btn-danger btn-sm" title="Kembali">
                             <i class="fas fa-times"></i>
                         </a> --}}
-                        <a href="{{ route('kasir.pasien.tagihan', ['norm' => $head->simgos_norm, 'jenis_kasir' => $jenis_kasir]) }}" 
-   class="btn btn-danger btn-sm" title="Kembali">
-    <i class="fas fa-times"></i>
-</a>
+                        <a href="{{ route('kasir.pasien.tagihan', ['norm' => $head->simgos_norm, 'jenis_kasir' => $jenis_kasir]) }}"
+                            class="btn btn-danger btn-sm" title="Kembali">
+                            <i class="fas fa-times"></i>
+                        </a>
                     </div>
                 </div>
                 <div class="card-body">
@@ -258,14 +257,14 @@
                             <strong><i class="fas fa-check-circle"></i> SUDAH LUNAS</strong>
                         </div>
 
-                        <a href="{{ route('kuitansi.cetak.pasien', ['id' => $head->id]) }}" target="_blank"
-                            {{-- Buka di tab baru --}} class="btn btn-success btn-icon-split btn-block mb-2">
+                        <a href="{{ route('kuitansi.cetak.pasien', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
+                            target="_blank" {{-- Buka di tab baru --}} class="btn btn-success btn-icon-split btn-block mb-2">
                             <span class="icon text-white-50"><i class="fas fa-print"></i></span>
                             <span class="text">Cetak Kuitansi Pasien</span>
                         </a>
 
-                        <a href="{{ route('kuitansi.cetak.asuransi', ['id' => $head->id]) }}" target="_blank"
-                            {{-- Buka di tab baru --}} class="btn btn-info btn-icon-split btn-block mb-2">
+                        <a href="{{ route('kuitansi.cetak.asuransi', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
+                            target="_blank" {{-- Buka di tab baru --}} class="btn btn-info btn-icon-split btn-block mb-2">
                             <span class="icon text-white-50"><i class="fas fa-print"></i></span>
                             <span class="text">Cetak Kuitansi Asuransi</span>
                         </a>

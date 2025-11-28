@@ -29,7 +29,7 @@
     </div>
 
     <div class="info-bar">
-        <div class="left">KASIR: Rawat Jalan</div>
+        <div class="left">KASIR: {{ $jenis_kasir }}</div>
         <div class="right">TANGGAL WAKTU CETAK: {{ now()->format('d-m-Y H:i:s') }}</div>
         <div class="clear"></div>
     </div>
