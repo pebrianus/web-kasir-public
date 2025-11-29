@@ -157,20 +157,21 @@
                                 </tr>
                                 {{-- +++ TAMBAHKAN INI UNTUK DISKON +++ --}}
                                 @if ($head->diskon_simgos > 0)
-                                <tr class="text-danger">
-                                    <td colspan="3" class="text-right font-weight-bold">POTONGAN / DISKON</td>
-                                    <td colspan="3" class="text-right font-weight-bold">
-                                        - Rp {{ number_format($head->diskon_simgos, 2, ',', '.') }}
-                                    </td>
-                                </tr>
-                                
-                                {{-- Tampilkan Total Akhir setelah diskon --}}
-                                <tr class="bg-light">
-                                    <td colspan="3" class="text-right font-weight-bold">TOTAL BERSIH (Setelah Diskon)</td>
-                                    <td colspan="3" class="text-right font-weight-bold">
-                                        Rp {{ number_format($total_asli - $head->diskon_simgos, 2, ',', '.') }}
-                                    </td>
-                                </tr>
+                                    <tr class="text-danger">
+                                        <td colspan="3" class="text-right font-weight-bold">POTONGAN / DISKON</td>
+                                        <td colspan="3" class="text-right font-weight-bold">
+                                            - Rp {{ number_format($head->diskon_simgos, 2, ',', '.') }}
+                                        </td>
+                                    </tr>
+
+                                    {{-- Tampilkan Total Akhir setelah diskon --}}
+                                    <tr class="bg-light">
+                                        <td colspan="3" class="text-right font-weight-bold">TOTAL BERSIH (Setelah Diskon)
+                                        </td>
+                                        <td colspan="3" class="text-right font-weight-bold">
+                                            Rp {{ number_format($total_asli - $head->diskon_simgos, 2, ',', '.') }}
+                                        </td>
+                                    </tr>
                                 @endif
                                 {{-- +++ BATAS TAMBAHAN +++ --}}
                                 <tr>
@@ -223,13 +224,13 @@
                             'norm' => $head->simgos_norm,
                             'jenis_kasir' => request('jenis_kasir'),
                         ]) }}"
+                    class="btn btn-danger btn-sm" title="Kembali">
+                    <i class="fas fa-times"></i>
+                    </a> --}}
+                        <a href="{{ route('kasir.pasien.tagihan', ['norm' => $head->simgos_norm, 'jenis_kasir' => $jenis_kasir]) }}"
                             class="btn btn-danger btn-sm" title="Kembali">
                             <i class="fas fa-times"></i>
-                        </a> --}}
-                        <a href="{{ route('kasir.pasien.tagihan', ['norm' => $head->simgos_norm, 'jenis_kasir' => $jenis_kasir]) }}" 
-   class="btn btn-danger btn-sm" title="Kembali">
-    <i class="fas fa-times"></i>
-</a>
+                        </a>
                     </div>
                 </div>
                 <div class="card-body">
@@ -305,7 +306,7 @@
                         <div class="form-group">
                             <label>Total Tagihan Pasien</label>
                             <input type="text" class="form-control form-control-lg" id="total-tagihan-pasien"
-                                value="Rp {{ number_format($total_pasien, 2, ',', '.') }}" readonly>
+                                value="Rp {{ number_format($total_pasien_bersih, 2, ',', '.') }}" readonly>
                         </div>
 
                         <hr>
