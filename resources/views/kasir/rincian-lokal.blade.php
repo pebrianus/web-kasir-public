@@ -168,6 +168,8 @@
                                     <tr class="bg-light">
                                         <td colspan="3" class="text-right font-weight-bold">TOTAL BERSIH (Setelah Diskon)
                                         </td>
+                                        <td colspan="3" class="text-right font-weight-bold">TOTAL BERSIH (Setelah Diskon)
+                                        </td>
                                         <td colspan="3" class="text-right font-weight-bold">
                                             Rp {{ number_format($total_asli - $head->diskon_simgos, 2, ',', '.') }}
                                         </td>
@@ -230,6 +232,14 @@
                         <a href="{{ route('kasir.pasien.tagihan', ['norm' => $head->simgos_norm, 'jenis_kasir' => $jenis_kasir]) }}"
                             class="btn btn-danger btn-sm" title="Kembali">
                             <i class="fas fa-times"></i>
+                            'norm' => $head->simgos_norm,
+                            'jenis_kasir' => request('jenis_kasir'),
+                            ]) }}" class="btn btn-danger btn-sm" title="Kembali">
+                            <i class="fas fa-times"></i>
+                        </a> --}}
+                        <a href="{{ route('kasir.pasien.tagihan', ['norm' => $head->simgos_norm, 'jenis_kasir' => $jenis_kasir]) }}"
+                            class="btn btn-danger btn-sm" title="Kembali">
+                            <i class="fas fa-times"></i>
                         </a>
                     </div>
                 </div>
@@ -259,14 +269,14 @@
                             <strong><i class="fas fa-check-circle"></i> SUDAH LUNAS</strong>
                         </div>
 
-                        <a href="{{ route('kuitansi.cetak.pasien', ['id' => $head->id]) }}" target="_blank"
-                            {{-- Buka di tab baru --}} class="btn btn-success btn-icon-split btn-block mb-2">
+                        <a href="{{ route('kuitansi.cetak.pasien', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
+                            target="_blank" {{-- Buka di tab baru --}} class="btn btn-success btn-icon-split btn-block mb-2">
                             <span class="icon text-white-50"><i class="fas fa-print"></i></span>
                             <span class="text">Cetak Kuitansi Pasien</span>
                         </a>
 
-                        <a href="{{ route('kuitansi.cetak.asuransi', ['id' => $head->id]) }}" target="_blank"
-                            {{-- Buka di tab baru --}} class="btn btn-info btn-icon-split btn-block mb-2">
+                        <a href="{{ route('kuitansi.cetak.asuransi', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
+                            target="_blank" {{-- Buka di tab baru --}} class="btn btn-info btn-icon-split btn-block mb-2">
                             <span class="icon text-white-50"><i class="fas fa-print"></i></span>
                             <span class="text">Cetak Kuitansi Asuransi</span>
                         </a>
