@@ -109,35 +109,35 @@
                                     $total_pasien = 0;
                                 @endphp
                                 @forelse ($detail as $item)
-                                                        <tr>
-                                                            <td>{{ $item->deskripsi_item }}</td>
-                                                            <td class="text-right">{{ $item->qty }}</td>
-                                                            <td class="text-right">
-                                                                {{ fmod($item->harga_satuan, 1) !== 0.0
-                                    ? number_format($item->harga_satuan, 2, ',', '.')
-                                    : number_format($item->harga_satuan, 0, ',', '.') }}
-                                                            </td>
-                                                            <td class="text-right">
-                                                                {{ fmod($item->subtotal, 1) !== 0.0
-                                    ? number_format($item->subtotal, 2, ',', '.')
-                                    : number_format($item->subtotal, 0, ',', '.') }}
-                                                            </td>
-                                                            <td class="text-right bg-light">
-                                                                {{ fmod($item->nominal_ditanggung_asuransi, 1) !== 0.0
-                                    ? number_format($item->nominal_ditanggung_asuransi, 2, ',', '.')
-                                    : number_format($item->nominal_ditanggung_asuransi, 0, ',', '.') }}
-                                                            </td>
-                                                            <td class="text-right bg-light">
-                                                                {{ fmod($item->nominal_ditanggung_pasien, 1) !== 0.0
-                                    ? number_format($item->nominal_ditanggung_pasien, 2, ',', '.')
-                                    : number_format($item->nominal_ditanggung_pasien, 0, ',', '.') }}
-                                                            </td>
-                                                        </tr>
-                                                        @php
-                                                            $total_asli += $item->subtotal;
-                                                            $total_asuransi += $item->nominal_ditanggung_asuransi;
-                                                            $total_pasien += $item->nominal_ditanggung_pasien;
-                                                        @endphp
+                                    <tr>
+                                        <td>{{ $item->deskripsi_item }}</td>
+                                        <td class="text-right">{{ $item->qty }}</td>
+                                        <td class="text-right">
+                                            {{ fmod($item->harga_satuan, 1) !== 0.0
+                                                ? number_format($item->harga_satuan, 2, ',', '.')
+                                                : number_format($item->harga_satuan, 0, ',', '.') }}
+                                        </td>
+                                        <td class="text-right">
+                                            {{ fmod($item->subtotal, 1) !== 0.0
+                                                ? number_format($item->subtotal, 2, ',', '.')
+                                                : number_format($item->subtotal, 0, ',', '.') }}
+                                        </td>
+                                        <td class="text-right bg-light">
+                                            {{ fmod($item->nominal_ditanggung_asuransi, 1) !== 0.0
+                                                ? number_format($item->nominal_ditanggung_asuransi, 2, ',', '.')
+                                                : number_format($item->nominal_ditanggung_asuransi, 0, ',', '.') }}
+                                        </td>
+                                        <td class="text-right bg-light">
+                                            {{ fmod($item->nominal_ditanggung_pasien, 1) !== 0.0
+                                                ? number_format($item->nominal_ditanggung_pasien, 2, ',', '.')
+                                                : number_format($item->nominal_ditanggung_pasien, 0, ',', '.') }}
+                                        </td>
+                                    </tr>
+                                    @php
+                                        $total_asli += $item->subtotal;
+                                        $total_asuransi += $item->nominal_ditanggung_asuransi;
+                                        $total_pasien += $item->nominal_ditanggung_pasien;
+                                    @endphp
                                 @empty
                                     <tr>
                                         <td colspan="5" class="text-center">Data rincian tidak ditemukan.</td>
@@ -151,8 +151,8 @@
                                     <td colspan="3" class="text-right font-weight-bold">
                                         Rp.
                                         {{ fmod($total_asli, 1) !== 0.0
-        ? number_format($total_asli, 2, ',', '.')
-        : number_format($total_asli, 0, ',', '.') }}
+                                            ? number_format($total_asli, 2, ',', '.')
+                                            : number_format($total_asli, 0, ',', '.') }}
                                     </td>
                                 </tr>
                                 {{-- +++ TAMBAHKAN INI UNTUK DISKON +++ --}}
@@ -166,7 +166,8 @@
 
                                     {{-- Tampilkan Total Akhir setelah diskon --}}
                                     <tr class="bg-light">
-                                        <td colspan="3" class="text-right font-weight-bold">TOTAL BERSIH (Setelah Diskon)</td>
+                                        <td colspan="3" class="text-right font-weight-bold">TOTAL BERSIH (Setelah Diskon)
+                                        </td>
                                         <td colspan="3" class="text-right font-weight-bold">
                                             Rp {{ number_format($total_asli - $head->diskon_simgos, 2, ',', '.') }}
                                         </td>
@@ -178,8 +179,8 @@
                                     <td class="text-right font-weight-bold" colspan="3">
                                         Rp.
                                         {{ fmod($total_asuransi, 1) !== 0.0
-        ? number_format($total_asuransi, 2, ',', '.')
-        : number_format($total_asuransi, 0, ',', '.') }}
+                                            ? number_format($total_asuransi, 2, ',', '.')
+                                            : number_format($total_asuransi, 0, ',', '.') }}
                                     </td>
                                 </tr>
                                 <tr class="table-success">
@@ -191,8 +192,8 @@
                                             $total_pasien_bersih = max(0, $total_pasien - $head->diskon_simgos);
                                         @endphp
                                         {{ fmod($total_pasien_bersih, 1) !== 0.0
-        ? number_format($total_pasien_bersih, 2, ',', '.')
-        : number_format($total_pasien_bersih, 0, ',', '.') }}
+                                            ? number_format($total_pasien_bersih, 2, ',', '.')
+                                            : number_format($total_pasien_bersih, 0, ',', '.') }}
                                     </td>
                                 </tr>
                             </tfoot>
@@ -219,12 +220,6 @@
                                 </button>
                             </form>
                         @endif
-                        {{-- <a href="{{ route('kasir.pasien.tagihan', [
-                                        'norm' => $head->simgos_norm,
-                                        'jenis_kasir' => request('jenis_kasir'),
-                                    ]) }}" class="btn btn-danger btn-sm" title="Kembali">
-                            <i class="fas fa-times"></i>
-                        </a> --}}
                         <a href="{{ route('kasir.pasien.tagihan', ['norm' => $head->simgos_norm, 'jenis_kasir' => $jenis_kasir]) }}"
                             class="btn btn-danger btn-sm" title="Kembali">
                             <i class="fas fa-times"></i>
@@ -268,6 +263,15 @@
                             <span class="icon text-white-50"><i class="fas fa-print"></i></span>
                             <span class="text">Cetak Kuitansi Asuransi</span>
                         </a>
+
+                        <hr class="my-4">
+                        <form action="{{ route('kasir.bayar.batal', ['id' => $head->id]) }}" method="POST"
+                            onsubmit="return confirm('Pembayaran akan dihapus dari laporan harian dan status tagihan kembali menjadi DRAFT.\n\nApakah Anda yakin ingin membatalkan pembayaran ini?');">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-danger btn-block">
+                                <i class="fas fa-undo-alt mr-1"></i> Batalkan Pembayaran
+                            </button>
+                        </form>
                     @endif
                     {{-- AKHIR LOGIKA IF/ELSE --}}
 
@@ -306,7 +310,7 @@
                         <div class="form-group">
                             <label>Total Tagihan Pasien</label>
                             <input type="text" class="form-control form-control-lg" id="total-tagihan-pasien"
-                                value="Rp {{ number_format($total_pasien, 2, ',', '.') }}" readonly>
+                                value="Rp {{ number_format($total_pasien_bersih, 2, ',', '.') }}" readonly>
                         </div>
 
                         <hr>

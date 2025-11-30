@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class KasirPembayaran extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'kasir_pembayaran';
 
@@ -18,5 +19,6 @@ class KasirPembayaran extends Model
         'metode_bayar_id',
         'nominal_bayar',
         'kasir_sesi_id',
+        'deleted_at'
     ];
 }

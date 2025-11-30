@@ -36,8 +36,7 @@ class KasirController extends Controller
         // 3. Jika ada pencarian, tambahkan logika 'where'
         if ($searchQuery) {
             $pasienQuery->where(function ($query) use ($searchQuery) {
-                $query->where('NAMA', 'like', '%' . $searchQuery . '%')
-                    ->orWhere('NORM', 'like', '%' . $searchQuery . '%');
+                $query->where('NAMA', 'like', '%' . $searchQuery . '%')->orWhere('NORM', 'like', '%' . $searchQuery . '%');
             });
         }
 
@@ -48,7 +47,7 @@ class KasirController extends Controller
         // 5. Kirim data ke view
         return view('pencarian.rawat-jalan', [
             'pasienList' => $pasienList,
-            'jenis_kasir' => $jenis_kasir // Kirim juga jenis kasir ke view
+            'jenis_kasir' => $jenis_kasir, // Kirim juga jenis kasir ke view
         ]);
     }
 
@@ -62,18 +61,15 @@ class KasirController extends Controller
         // Ambil filter show tagihan, default 'proses'
         $statusFilter = $request->input('status', 'proses');
 
-        $processedTags = KasirTagihanHead::where('simgos_norm', $norm)
-            ->select('id', 'simgos_tagihan_id', 'status_kasir')
-            ->get()
-            ->keyBy('simgos_tagihan_id');
+        $processedTags = KasirTagihanHead::where('simgos_norm', $norm)->select('id', 'simgos_tagihan_id', 'status_kasir')->get()->keyBy('simgos_tagihan_id');
 
-        // 2. Ambil daftar tagihan (Query Kompleks - VERSI PERBAIKAN)
-        $daftarTagihanQuery = DB::connection('simgos_pembayaran')->table('tagihan as t')
+        // 2. Ambil daftar tagihan (masih harga brutto)
+        $daftarTagihanQuery = DB::connection('simgos_pembayaran')
+            ->table('tagihan as t')
             ->join('pendaftaran.kunjungan as k', 't.ID', '=', 'k.NOPEN')
             ->join('pendaftaran.penjamin as pj', 't.ID', '=', 'pj.NOPEN')
             ->join('master.referensi as ref_asuransi', function ($join) {
-                $join->on('pj.JENIS', '=', 'ref_asuransi.ID')
-                    ->where('ref_asuransi.JENIS', 10);
+                $join->on('pj.JENIS', '=', 'ref_asuransi.ID')->where('ref_asuransi.JENIS', 10);
             })
             ->join('master.ruangan as r', 'k.RUANGAN', '=', 'r.ID')
             ->where('r.JENIS_KUNJUNGAN', $jenis_kasir)
@@ -81,14 +77,7 @@ class KasirController extends Controller
             ->join('master.pegawai as p', 'd.NIP', '=', 'p.NIP')
             ->where('t.REF', $norm)
             ->where('t.STATUS', 2)
-            ->select(
-                't.ID as no_tagihan',
-                't.TOTAL as total_tagihan',
-                't.TANGGAL as tgl_tagihan',
-                'r.DESKRIPSI as nama_ruangan',
-                'ref_asuransi.DESKRIPSI as nama_asuransi',
-                DB::raw("CONCAT_WS(' ', p.GELAR_DEPAN, p.NAMA, p.GELAR_BELAKANG) as nama_dokter")
-            )
+            ->select('t.ID as no_tagihan', 't.TOTAL as total_tagihan_kotor', 't.TANGGAL as tgl_tagihan', 'r.DESKRIPSI as nama_ruangan', 'ref_asuransi.DESKRIPSI as nama_asuransi', DB::raw("CONCAT_WS(' ', p.GELAR_DEPAN, p.NAMA, p.GELAR_BELAKANG) as nama_dokter"))
             ->orderBy('t.TANGGAL', 'desc');
 
         $lunasIds = $processedTags->where('status_kasir', 'lunas')->pluck('simgos_tagihan_id');
@@ -103,19 +92,43 @@ class KasirController extends Controller
 
         $daftarTagihan = $daftarTagihanQuery->get();
 
+        // --- LOGIKA HITUNG DISKON & TOTAL BERSIH ---
+        // Kita loop setiap tagihan untuk mengecek apakah ada diskon di SIMGOS
+        foreach ($daftarTagihan as $tagihan) {
+            // A. Ambil Diskon RS
+            $diskonRSData = DB::connection('simgos_pembayaran')->table('diskon')->where('TAGIHAN', $tagihan->no_tagihan)->first();
+
+            $totalDiskonRS = 0;
+            if ($diskonRSData) {
+                $totalDiskonRS = ($diskonRSData->ADMINISTRASI ?? 0) + ($diskonRSData->AKOMODASI ?? 0) + ($diskonRSData->SARANA_NON_AKOMODASI ?? 0) + ($diskonRSData->PARAMEDIS ?? 0);
+            }
+
+            // B. Ambil Diskon Dokter
+            $totalDiskonDokter = DB::connection('simgos_pembayaran')->table('diskon_dokter')->where('TAGIHAN', $tagihan->no_tagihan)->sum('TOTAL');
+
+            // C. Hitung Netto
+            $totalDiskon = $totalDiskonRS + $totalDiskonDokter;
+            $totalBersih = max(0, $tagihan->total_tagihan_kotor - $totalDiskon);
+
+            // D. Masukkan data tambahan ke object tagihan agar bisa dibaca di View
+            $tagihan->total_diskon = $totalDiskon;
+            $tagihan->total_tagihan_bersih = $totalBersih; // <-- Ini yang akan ditampilkan
+        }
+        // --- [AKHIR LOGIKA BARU] ---
+
         return view('kasir.show-tagihan', [
             'pasien' => $pasien,
             'daftarTagihan' => $daftarTagihan,
             'processedTags' => $processedTags,
             'statusFilter' => $statusFilter,
-            'jenis_kasir' => $jenis_kasir
+            'jenis_kasir' => $jenis_kasir,
         ]);
     }
     public function prosesDanBukaTagihan(Request $request)
     {
         // 1. Validasi input
         $request->validate([
-            'simgos_tagihan_id' => 'required'
+            'simgos_tagihan_id' => 'required',
         ]);
 
         $simgosTagihanID = $request->simgos_tagihan_id;
@@ -128,7 +141,8 @@ class KasirController extends Controller
         if ($existingTagihan && $existingTagihan->status_kasir == 'lunas') {
             // Langsung arahkan ke halaman rincian lokal yang sudah ada
             // Jangan lakukan snapshot ulang!
-            return redirect()->route('kasir.tagihan.lokal', ['id' => $existingTagihan->id, 'jenis_kasir' => $request->jenis_kasir])
+            return redirect()
+                ->route('kasir.tagihan.lokal', ['id' => $existingTagihan->id, 'jenis_kasir' => $request->jenis_kasir])
                 ->with('info', 'Tagihan ini sudah lunas.');
             // Beri pesan 'info' (opsional)
         }
@@ -143,11 +157,16 @@ class KasirController extends Controller
         $totalDiskonRS = 0;
         if ($diskonRSData) {
             // Jumlahkan komponen diskon (sesuaikan jika ada kolom lain di SIMGOS)
-            $totalDiskonRS = ($diskonRSData->ADMINISTRASI ?? 0) +
-                ($diskonRSData->AKOMODASI ?? 0) +
-                ($diskonRSData->SARANA_NON_AKOMODASI ?? 0) +
-                ($diskonRSData->PARAMEDIS ?? 0);
+            $totalDiskonRS = ($diskonRSData->ADMINISTRASI ?? 0) + ($diskonRSData->AKOMODASI ?? 0) + ($diskonRSData->SARANA_NON_AKOMODASI ?? 0) + ($diskonRSData->PARAMEDIS ?? 0);
         }
+
+        // B. Ambil Diskon Dokter
+        $totalDiskonDokter = DB::connection('simgos_pembayaran')->table('diskon_dokter')->where('TAGIHAN', $simgosTagihanID)->sum('TOTAL');
+        $totalDiskonRS = ($diskonRSData->ADMINISTRASI ?? 0) +
+            ($diskonRSData->AKOMODASI ?? 0) +
+            ($diskonRSData->SARANA_NON_AKOMODASI ?? 0) +
+            ($diskonRSData->PARAMEDIS ?? 0);
+
 
         // B. Ambil Diskon Dokter
         $totalDiskonDokter = DB::connection('simgos_pembayaran')->table('diskon_dokter')
@@ -160,6 +179,7 @@ class KasirController extends Controller
         // 3. Gunakan updateOrCreate seperti sebelumnya (aman karena sudah dicek)
         $tagihanHead = KasirTagihanHead::updateOrCreate(
             ['simgos_tagihan_id' => $simgosTagihanID], // Kunci pencarian
+            // Data untuk di-update atau di-create
             [ // Data untuk di-update atau di-create
                 'simgos_norm' => $request->simgos_norm,
                 'nama_pasien' => $request->nama_pasien,
@@ -172,7 +192,7 @@ class KasirController extends Controller
                 'diskon_simgos' => $totalDiskonSimgos,
                 'total_bayar_pasien' => max(0, $request->total_asli_simgos - $totalDiskonSimgos),
                 'total_bayar_asuransi' => 0,
-            ]
+            ],
         );
 
         // 4. HAPUS detail lama (Wipe)
@@ -180,47 +200,54 @@ class KasirController extends Controller
 
         // 5. Bangun "Resep Snapshot" (Replace)
         // --- Query UNION Anda yang sudah benar ada di sini ---
-        $queryAdmin = DB::connection('simgos_pembayaran')->table('rincian_tagihan as rt')
+        $queryAdmin = DB::connection('simgos_pembayaran')
+            ->table('rincian_tagihan as rt')
             ->join('master.referensi as ref', function ($join) {
-                $join->on('ref.ID', '=', 'rt.JENIS') // <-- Perbaikan: Join on ID
+                $join
+                    ->on('ref.ID', '=', 'rt.JENIS') // <-- Perbaikan: Join on ID
                     ->where('ref.JENIS', 30); // Jenis Tarif
             })
             ->where('rt.TAGIHAN', $simgosTagihanID)
             ->where('rt.JENIS', 1) // 1 = Administrasi
-            ->select( // <-- PASTIKAN 5 KOLOM INI
+            ->select(
+                // <-- PASTIKAN 5 KOLOM INI
                 'rt.REF_ID as simgos_ref_id',
                 'rt.JENIS as simgos_jenis_tarif',
                 DB::raw("'Administrasi' as deskripsi_item"), // Ambil nama langsung
                 'rt.JUMLAH as qty',
-                'rt.TARIF as harga_satuan'
+                'rt.TARIF as harga_satuan',
             );
 
-        $queryTindakan = DB::connection('simgos_pembayaran')->table('rincian_tagihan as rt')
+        $queryTindakan = DB::connection('simgos_pembayaran')
+            ->table('rincian_tagihan as rt')
             ->join('layanan.tindakan_medis as tm', 'tm.ID', '=', 'rt.REF_ID')
             ->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')
             ->where('rt.TAGIHAN', $simgosTagihanID)
             ->where('rt.JENIS', 3) // 3 = Tindakan
             ->where('tm.STATUS', 1) // Tindakan Medis Aktif
-            ->select( // <-- PASTIKAN 5 KOLOM INI SAMA
+            ->select(
+                // <-- PASTIKAN 5 KOLOM INI SAMA
                 'rt.REF_ID as simgos_ref_id',
                 'rt.JENIS as simgos_jenis_tarif',
                 't.NAMA as deskripsi_item',
                 'rt.JUMLAH as qty',
-                'rt.TARIF as harga_satuan'
+                'rt.TARIF as harga_satuan',
             );
 
-        $queryFarmasi = DB::connection('simgos_pembayaran')->table('rincian_tagihan as rt')
+        $queryFarmasi = DB::connection('simgos_pembayaran')
+            ->table('rincian_tagihan as rt')
             ->join('layanan.farmasi as f', 'f.ID', '=', 'rt.REF_ID')
             ->join('inventory.barang as b', 'b.ID', '=', 'f.FARMASI')
             ->where('rt.TAGIHAN', $simgosTagihanID)
             ->where('rt.JENIS', 4) // 4 = Farmasi
             ->whereIn('f.STATUS', [1, 2]) // Farmasi (Proses, Final)
-            ->select( // <-- PASTIKAN 5 KOLOM INI SAMA
+            ->select(
+                // <-- PASTIKAN 5 KOLOM INI SAMA
                 'rt.REF_ID as simgos_ref_id',
                 'rt.JENIS as simgos_jenis_tarif',
                 'b.NAMA as deskripsi_item',
                 'rt.JUMLAH as qty',
-                'rt.TARIF as harga_satuan'
+                'rt.TARIF as harga_satuan',
             );
         // --- Akhir Query UNION ---
 
@@ -265,7 +292,7 @@ class KasirController extends Controller
             'head' => $tagihanHead,
             'detail' => $tagihanDetail,
             'metodeBayar' => $metodeBayar,
-            'jenis_kasir' => $jenis_kasir
+            'jenis_kasir' => $jenis_kasir,
         ]);
     }
 
@@ -279,7 +306,7 @@ class KasirController extends Controller
 
         return view('kasir.bagi-tagihan', [
             'head' => $tagihanHead,
-            'detail' => $tagihanDetail
+            'detail' => $tagihanDetail,
         ]);
     }
 
@@ -317,7 +344,7 @@ class KasirController extends Controller
                 // Update database
                 $item->update([
                     'nominal_ditanggung_asuransi' => $nominal_asuransi,
-                    'nominal_ditanggung_pasien' => $nominal_pasien
+                    'nominal_ditanggung_pasien' => $nominal_pasien,
                 ]);
 
                 // Tambahkan ke total
@@ -335,149 +362,134 @@ class KasirController extends Controller
         // Simpan total yang sudah dihitung ulang ke tabel HEAD
         $tagihanHead->update([
             'total_bayar_pasien' => $totalBayarPasienNet, //Gunakan harga netto setelah diskon
-            'total_bayar_asuransi' => $totalAsuransiBaru
+            'total_bayar_asuransi' => $totalAsuransiBaru,
         ]);
 
         // Kembalikan ke halaman rincian
-        return redirect()->route('kasir.tagihan.lokal', ['id' => $id, 'jenis_kasir' => $jenisKasir])
+        return redirect()
+            ->route('kasir.tagihan.lokal', ['id' => $id, 'jenis_kasir' => $jenisKasir])
             ->with('success', 'Pembagian tagihan berhasil disimpan!');
     }
-    // public function storePembayaran(Request $request, $id)
-    // {
-    //     // $id adalah 'kasir_tagihan_head_id'
-    //     $request->validate([
-    //         'metode_bayar_id' => 'required|integer',
-    //         'nominal_bayar' => 'required|numeric|min:0',
-    //     ]);
-    //     $jenisKasir = $request->jenis_kasir;
 
-    //     //  Cek apakah kasir aktif
-    //     $sesiAktif = KasirSesi::where('status', 'BUKA')->first();
-    //     if (!$sesiAktif) {
-    //         // Tolak pembayaran dan kembalikan dengan error
-    //         return redirect()->back()->with('error', 'Sesi kasir ditutup! Harap "Buka Kasir" terlebih dahulu untuk memproses pembayaran.');
-    //     }
-    //     // Ambil data tagihan lokal
-    //     $tagihanHead = KasirTagihanHead::findOrFail($id);
 
-    //     // Pastikan tagihan ini belum lunas (pencegahan double pay)
-    //     if ($tagihanHead->status_kasir == 'lunas') {
-    //         return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
-    //             ->with('info', 'Tagihan ini SUDAH LUNAS.');
-    //     }
-    //     // Cek total tagihan terkini dari SIMGOS
-    //     $totalSimgosTerkini = DB::connection('simgos_pembayaran')->table('tagihan')
-    //         ->where('ID', $tagihanHead->simgos_tagihan_id)
-    //         ->value('TOTAL');
 
-    //     if ((float) $tagihanHead->total_asli_simgos != (float) $totalSimgosTerkini) {
-    //         // JIKA TIDAK SAMA, batalkan pembayaran!
-    //         // Beritahu kasir bahwa data telah berubah dan minta mereka me-refresh.
-    //         return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
-    //             ->with('error', 'GAGAL BAYAR: Data SIMGOS telah berubah! Total di SIMGOS (Rp ' . number_format($totalSimgosTerkini, 0, ',', '.') . ') tidak cocok dengan data snapshot Anda (Rp ' . number_format($tagihanHead->total_asli_simgos, 0, ',', '.') . '). Silakan klik tombol Refresh (R) di sidebar kanan untuk mengambil data terbaru.');
-    //     }
+    public function storePembayaran(Request $request, $id)
+    {
+        // Validasi input dasar
+        $request->validate([
+            'metode_bayar_id' => 'required|integer',
+            'nominal_bayar' => 'required|numeric|min:0',
+            'jenis_kasir' => 'required|integer'
+        ]);
 
-    //     // Hitung nominal yang SEHARUSNYA dibayar (Server Side Calculation)
-    //     // Rumus: (Total Asli - Diskon - Ditanggung Asuransi)
-    //     $nominalWajibBayar = $tagihanHead->total_asli_simgos - $tagihanHead->diskon_simgos - $tagihanHead->total_bayar_asuransi;
+        $jenisKasir = $request->jenis_kasir;
 
-    //     // Opsional: Jika Anda ingin membolehkan pembayaran parsial (mencicil),
-    //     // gunakan $request->nominal_bayar.
-    //     // Tapi jika harus lunas sekaligus, gunakan $nominalWajibBayar.
-    //     // Di sini saya asumsikan harus sesuai tagihan (untuk keamanan):
-    //     $nominalFinal = ($nominalWajibBayar < 0) ? 0 : $nominalWajibBayar;
+        // ======================================================
+        // 🔥 VALIDASI SESI AKTIF SESUAI JENIS KASIR + USER LOGIN
+        // ======================================================
+        $sesiAktif = KasirSesi::where('status', 'BUKA')
+            ->where('jenis_kasir', $jenisKasir)
+            ->where('dibuka_oleh_user_id', Auth::id())
+            ->first();
 
-    //     // 1. Simpan catatan transaksi di tabel log
-    //     KasirPembayaran::create([
-    //         'kasir_tagihan_head_id' => $tagihanHead->id,
-    //         'user_id' => Auth::id(), // ID kasir yang sedang login
-    //         'metode_bayar_id' => $request->metode_bayar_id,
-    //         'nominal_bayar' => $request->nominal_bayar,
-    //         'kasir_sesi_id' => $sesiAktif->id
-    //     ]);
-
-    //     // 2. Update status tagihan utama menjadi 'lunas'
-    //     $tagihanHead->update([
-    //         'status_kasir' => 'lunas'
-    //     ]);
-
-    //     // 3. Kembalikan ke halaman rincian
-    //     return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
-    //         ->with('success', 'Pembayaran berhasil disimpan!');
-    // }
-public function storePembayaran(Request $request, $id)
-{
-    // Validasi input dasar
-    $request->validate([
-        'metode_bayar_id' => 'required|integer',
-        'nominal_bayar' => 'required|numeric|min:0',
-        'jenis_kasir' => 'required|integer'
-    ]);
-
-    $jenisKasir = $request->jenis_kasir;
-
-    // ======================================================
-    // 🔥 VALIDASI SESI AKTIF SESUAI JENIS KASIR + USER LOGIN
-    // ======================================================
-    $sesiAktif = KasirSesi::where('status', 'BUKA')
-        ->where('jenis_kasir', $jenisKasir)
-        ->where('dibuka_oleh_user_id', Auth::id())
-        ->first();
-
-    if (!$sesiAktif) {
-        return redirect()->back()->with(
-            'error',
-            'Sesi kasir untuk jenis kasir ' . $jenisKasir . ' belum dibuka!
+        if (!$sesiAktif) {
+            return redirect()->back()->with(
+                'error',
+                'Sesi kasir untuk jenis kasir ' . $jenisKasir . ' belum dibuka!
              Silakan buka sesi kasir sesuai role Anda.'
-        );
+            );
+        }
+
+        // Ambil data tagihan lokal
+        $tagihanHead = KasirTagihanHead::findOrFail($id);
+
+        // Cek tagihan sudah lunas?
+        if ($tagihanHead->status_kasir == 'lunas') {
+            return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
+                ->with('info', 'Tagihan ini SUDAH LUNAS.');
+        }
+
+        // Cek total SIMGOS
+        $totalSimgosTerkini = DB::connection('simgos_pembayaran')->table('tagihan')
+            ->where('ID', $tagihanHead->simgos_tagihan_id)
+            ->value('TOTAL');
+
+        if ((float) $tagihanHead->total_asli_simgos != (float) $totalSimgosTerkini) {
+            return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
+                ->with('error', 'GAGAL BAYAR: Data SIMGOS telah berubah! Silakan refresh.');
+        }
+
+        // Hitung nominal wajib (server-side)
+        $nominalWajibBayar =
+            $tagihanHead->total_asli_simgos
+            - $tagihanHead->diskon_simgos
+            - $tagihanHead->total_bayar_asuransi;
+
+
+
+        // Opsional: Jika Anda ingin membolehkan pembayaran parsial (mencicil),
+        // gunakan $request->nominal_bayar.
+        // Tapi jika harus lunas sekaligus, gunakan $nominalWajibBayar.
+        // Di sini saya asumsikan harus sesuai tagihan (untuk keamanan):
+        $nominalFinal = $nominalWajibBayar < 0 ? 0 : $nominalWajibBayar;
+
+        // 1. Simpan catatan transaksi di tabel log
+        KasirPembayaran::create([
+            'kasir_tagihan_head_id' => $tagihanHead->id,
+            'user_id' => Auth::id(), // ID kasir yang sedang login
+            'metode_bayar_id' => $request->metode_bayar_id,
+            'nominal_bayar' => $nominalFinal,
+            // 'nominal_bayar' => $request->nominal_bayar,
+            'kasir_sesi_id' => $sesiAktif->id
+        ]);
+
+        // 2. Update status tagihan utama menjadi 'lunas'
+        $tagihanHead->update([
+            'status_kasir' => 'lunas',
+        ]);
+
+        // 3. Kembalikan ke halaman rincian
+        return redirect()
+            ->route('kasir.tagihan.lokal', ['id' => $id])
+            ->with('success', 'Pembayaran berhasil disimpan!');
     }
 
-    // Ambil data tagihan lokal
-    $tagihanHead = KasirTagihanHead::findOrFail($id);
 
-    // Cek tagihan sudah lunas?
-    if ($tagihanHead->status_kasir == 'lunas') {
-        return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
-            ->with('info', 'Tagihan ini SUDAH LUNAS.');
+
+    /**
+     * Membatalkan pembayaran (Rollback).
+     * Data pembayaran di-soft delete, status tagihan kembali jadi 'draft'.
+     */
+    public function batalPembayaran(Request $request, $id)
+    {
+        // $id adalah kasir_tagihan_head_id
+        $tagihanHead = KasirTagihanHead::findOrFail($id);
+
+        // 1. Validasi: Hanya bisa batal jika status sudah lunas
+        if ($tagihanHead->status_kasir != 'lunas') {
+            return redirect()
+                ->route('kasir.tagihan.lokal', ['id' => $id])
+                ->with('error', 'Tagihan ini statusnya belum lunas, tidak perlu dibatalkan.');
+        }
+
+        // 2. Proses Rollback Database
+        DB::transaction(function () use ($tagihanHead) {
+
+            // A. Soft Delete semua pembayaran terkait tagihan ini
+            KasirPembayaran::where('kasir_tagihan_head_id', $tagihanHead->id)->delete();
+
+            // B. Kembalikan status header menjadi 'draft'
+            $tagihanHead->update([
+                'status_kasir' => 'draft'
+            ]);
+        });
+
+        // 3. Redirect kembali
+        // Karena status sudah 'draft', tombol 'Refresh SIMGOS' akan muncul otomatis di view
+        return redirect()
+            ->route('kasir.tagihan.lokal', ['id' => $id])
+            ->with('success', 'Pembayaran BERHASIL DIBATALKAN. Silakan tekan tombol [Refresh] untuk menarik data revisi dari SIMGOS.');
     }
-
-    // Cek total SIMGOS
-    $totalSimgosTerkini = DB::connection('simgos_pembayaran')->table('tagihan')
-        ->where('ID', $tagihanHead->simgos_tagihan_id)
-        ->value('TOTAL');
-
-    if ((float) $tagihanHead->total_asli_simgos != (float) $totalSimgosTerkini) {
-        return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
-            ->with('error', 'GAGAL BAYAR: Data SIMGOS telah berubah! Silakan refresh.');
-    }
-
-    // Hitung nominal wajib (server-side)
-    $nominalWajibBayar =
-        $tagihanHead->total_asli_simgos
-        - $tagihanHead->diskon_simgos
-        - $tagihanHead->total_bayar_asuransi;
-
-    $nominalFinal = max(0, $nominalWajibBayar);
-
-    // Simpan transaksi pembayaran
-    KasirPembayaran::create([
-        'kasir_tagihan_head_id' => $tagihanHead->id,
-        'user_id' => Auth::id(),
-        'metode_bayar_id' => $request->metode_bayar_id,
-        'nominal_bayar' => $request->nominal_bayar,
-        'kasir_sesi_id' => $sesiAktif->id
-    ]);
-
-    // Update status tagihan
-    $tagihanHead->update([
-        'status_kasir' => 'lunas'
-    ]);
-
-    return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
-        ->with('success', 'Pembayaran berhasil disimpan!');
-}
-
-
     /**
      * Mencetak Kuitansi Pasien atau Asuransi dalam format PDF.
      * VERSI DENGAN AGREGRASI DETAIL TINDAKAN.
@@ -499,7 +511,7 @@ public function storePembayaran(Request $request, $id)
 
         // 2. Tentukan Tipe Kuitansi
         $routeName = Route::currentRouteName();
-        $tipeKuitansi = ($routeName == 'kuitansi.cetak.pasien') ? 'Pasien' : 'Asuransi';
+        $tipeKuitansi = $routeName == 'kuitansi.cetak.pasien' ? 'Pasien' : 'Asuransi';
 
         // 3. Ambil data detail tagihan LOKAL kita
         $tagihanDetail = KasirTagihanDetail::where('kasir_tagihan_head_id', $id)->get();
@@ -521,7 +533,7 @@ public function storePembayaran(Request $request, $id)
         $tindakanKeperawatan = []; // Array untuk item keperawatan
 
         foreach ($tagihanDetail as $item) {
-            $nominal = ($tipeKuitansi == 'Pasien') ? $item->nominal_ditanggung_pasien : $item->nominal_ditanggung_asuransi;
+            $nominal = $tipeKuitansi == 'Pasien' ? $item->nominal_ditanggung_pasien : $item->nominal_ditanggung_asuransi;
 
             // Hanya proses jika nominal > 0
             if ($nominal <= 0) {
@@ -562,10 +574,11 @@ public function storePembayaran(Request $request, $id)
                                 // Simpan sebagai item terpisah
                                 $tindakanKeperawatan[] = [
                                     'uraian' => $tindakanInfo->nama_tindakan, // Ambil nama spesifik
-                                    'subtotal' => $nominal
+                                    'subtotal' => $nominal,
                                 ];
                                 break;
-                            default: // Jenis tindakan lain (1, 2, 4, 6, 10, dll)
+                            default:
+                                // Jenis tindakan lain (1, 2, 4, 6, 10, dll)
                                 $subtotals['Tindakan Dokter'] += $nominal;
                                 break;
                         }
@@ -606,7 +619,6 @@ public function storePembayaran(Request $request, $id)
         $pdf = PDF::loadView('reports.kuitansi', $dataUntukView);
         $pdf->setPaper([0, 0, 612.28, 396.85], 'portrait');
 
-
         // 8. Tampilkan PDF
         return $pdf->stream('kuitansi-' . $tagihanHead->simgos_tagihan_id . '.pdf');
     }
@@ -614,41 +626,61 @@ public function storePembayaran(Request $request, $id)
      * Menyegarkan (refresh) data rincian tagihan dari SIMGOS.
      * Hanya berjalan jika status kasir masih 'draft'.
      */
-    public function refreshTagihanSimgos(Request $request, $id) // $id adalah kasir_tagihan_head_id
+    public function refreshTagihanSimgos(Request $request, $id)
     {
+        // $id adalah kasir_tagihan_head_id
         // 1. Cari Tagihan Head Lokal
         $tagihanHead = KasirTagihanHead::findOrFail($id);
 
         // 2. PERIKSA STATUS: HANYA JALANKAN JIKA 'draft'
         if ($tagihanHead->status_kasir != 'draft') {
-            return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
+            return redirect()
+                ->route('kasir.tagihan.lokal', ['id' => $id])
                 ->with('error', 'Tagihan ini sudah lunas, data tidak bisa di-refresh.');
         }
 
         // --- Lanjutkan proses refresh (mirip prosesDanBukaTagihan) ---
         $simgosTagihanID = $tagihanHead->simgos_tagihan_id; // Ambil ID SIMGOS dari head
 
+        // --- [BARU] AMBIL DATA DISKON TERBARU DARI SIMGOS ---
+        // A. Ambil Diskon RS
+        $diskonRSData = DB::connection('simgos_pembayaran')->table('diskon')->where('TAGIHAN', $simgosTagihanID)->first();
+
+        $totalDiskonRS = 0;
+        if ($diskonRSData) {
+            $totalDiskonRS = ($diskonRSData->ADMINISTRASI ?? 0) + ($diskonRSData->AKOMODASI ?? 0) + ($diskonRSData->SARANA_NON_AKOMODASI ?? 0) + ($diskonRSData->PARAMEDIS ?? 0);
+        }
+
+        // B. Ambil Diskon Dokter
+        $totalDiskonDokter = DB::connection('simgos_pembayaran')->table('diskon_dokter')->where('TAGIHAN', $simgosTagihanID)->sum('TOTAL');
+
+        // C. Total Gabungan Diskon
+        $totalDiskonSimgos = $totalDiskonRS + $totalDiskonDokter;
+        // --- [AKHIR LOGIKA DISKON] ---
+
         // 3. HAPUS detail lama (Wipe)
         KasirTagihanDetail::where('kasir_tagihan_head_id', $tagihanHead->id)->delete();
 
         // 4. Bangun "Resep Snapshot" (Replace)
         // --- Query UNION Anda ---
-        $queryAdmin = DB::connection('simgos_pembayaran')->table('rincian_tagihan as rt')
+        $queryAdmin = DB::connection('simgos_pembayaran')
+            ->table('rincian_tagihan as rt')
             ->join('master.referensi as ref', function ($join) {
                 $join->on('ref.ID', '=', 'rt.JENIS')->where('ref.JENIS', 30);
-            })->where('rt.TAGIHAN', $simgosTagihanID)->where('rt.JENIS', 1)
+            })
+            ->where('rt.TAGIHAN', $simgosTagihanID)
+            ->where('rt.JENIS', 1)
             ->select('rt.REF_ID as simgos_ref_id', 'rt.JENIS as simgos_jenis_tarif', DB::raw("'Administrasi' as deskripsi_item"), 'rt.JUMLAH as qty', 'rt.TARIF as harga_satuan');
 
-        $queryTindakan = DB::connection('simgos_pembayaran')->table('rincian_tagihan as rt')
-            ->join('layanan.tindakan_medis as tm', 'tm.ID', '=', 'rt.REF_ID')
-            ->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')
-            ->where('rt.TAGIHAN', $simgosTagihanID)->where('rt.JENIS', 3)->where('tm.STATUS', 1)
-            ->select('rt.REF_ID as simgos_ref_id', 'rt.JENIS as simgos_jenis_tarif', 't.NAMA as deskripsi_item', 'rt.JUMLAH as qty', 'rt.TARIF as harga_satuan');
+        $queryTindakan = DB::connection('simgos_pembayaran')->table('rincian_tagihan as rt')->join('layanan.tindakan_medis as tm', 'tm.ID', '=', 'rt.REF_ID')->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')->where('rt.TAGIHAN', $simgosTagihanID)->where('rt.JENIS', 3)->where('tm.STATUS', 1)->select('rt.REF_ID as simgos_ref_id', 'rt.JENIS as simgos_jenis_tarif', 't.NAMA as deskripsi_item', 'rt.JUMLAH as qty', 'rt.TARIF as harga_satuan');
 
-        $queryFarmasi = DB::connection('simgos_pembayaran')->table('rincian_tagihan as rt')
+        $queryFarmasi = DB::connection('simgos_pembayaran')
+            ->table('rincian_tagihan as rt')
             ->join('layanan.farmasi as f', 'f.ID', '=', 'rt.REF_ID')
             ->join('inventory.barang as b', 'b.ID', '=', 'f.FARMASI')
-            ->where('rt.TAGIHAN', $simgosTagihanID)->where('rt.JENIS', 4)->whereIn('f.STATUS', [1, 2])
+            ->where('rt.TAGIHAN', $simgosTagihanID)
+            ->where('rt.JENIS', 4)
+            ->whereIn('f.STATUS', [1, 2])
             ->select('rt.REF_ID as simgos_ref_id', 'rt.JENIS as simgos_jenis_tarif', 'b.NAMA as deskripsi_item', 'rt.JUMLAH as qty', 'rt.TARIF as harga_satuan');
         // --- Akhir Query UNION ---
 
@@ -675,10 +707,18 @@ public function storePembayaran(Request $request, $id)
         KasirTagihanDetail::insert($dataDetailUntukInsert);
 
         // 6. Update total asli di header
-        $tagihanHead->update(['total_asli_simgos' => $totalAsliBaru]);
+        // $tagihanHead->update(['total_asli_simgos' => $totalAsliBaru]);
+        $tagihanHead->update([
+            'total_asli_simgos' => $totalAsliBaru,
+            'diskon_simgos' => $totalDiskonSimgos, // Update field diskon
+            'total_bayar_asuransi' => 0,
+            // Hitung Netto: Total Asli - Diskon
+            'total_bayar_pasien' => max(0, $totalAsliBaru - $totalDiskonSimgos),
+        ]);
 
         // 7. Redirect kembali ke halaman rincian dengan pesan sukses
-        return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
+        return redirect()
+            ->route('kasir.tagihan.lokal', ['id' => $id])
             ->with('success', 'Data tagihan berhasil di-refresh dari SIMGOS.');
     }
     // public function bukaSesiKasir(Request $request)
@@ -709,6 +749,8 @@ public function storePembayaran(Request $request, $id)
         $user = Auth::user();
         $roleId = $user->role_id;
 
+        // cek apakah role ini sudah punya sesi buka
+        $sesiAktif = KasirSesi::where('status', 'BUKA')->whereHas('userPembuka', fn($q) => $q->where('role_id', $roleId))->first();
         // mapping role ke jenis kasir
         $mapJenisKasir = [
             1 => [1],      // role 1 -> kasir jenis 1
@@ -746,30 +788,6 @@ public function storePembayaran(Request $request, $id)
     }
 
 
-    // public function tutupSesiKasir(Request $request)
-    // {
-    //     $user = Auth::user();
-    //     $roleId = $user->role_id;
-
-    //     $sesiAktif = KasirSesi::where('status', 'BUKA')
-    //         ->whereHas('userPembuka', fn($q) => $q->where('role_id', $roleId))
-    //         ->first();
-
-    //     if (!$sesiAktif) {
-    //         return redirect()->route('dashboard')->with('error', 'Tidak ada sesi kasir aktif untuk role Anda.');
-    //     }
-
-    //     $totalPenerimaan = KasirPembayaran::where('kasir_sesi_id', $sesiAktif->id)->sum('nominal_bayar');
-
-    //     $sesiAktif->update([
-    //         'status' => 'TUTUP',
-    //         'waktu_tutup' => now(),
-    //         'ditutup_oleh_user_id' => $user->id,
-    //         'total_penerimaan_sistem' => $totalPenerimaan
-    //     ]);
-
-    //     return redirect()->route('dashboard')->with('success', 'Sesi kasir untuk role Anda berhasil ditutup!');
-    // }
     public function tutupSesiKasir(Request $request)
     {
         $user = Auth::user();
@@ -799,7 +817,6 @@ public function storePembayaran(Request $request, $id)
 
         // Tutup semua sesi kasir yang ditemukan
         foreach ($sesiAktifList as $sesi) {
-
             // hitung total penerimaan berdasarkan sesi ini
             $totalPenerimaan = KasirPembayaran::where('kasir_sesi_id', $sesi->id)
                 ->sum('nominal_bayar');
