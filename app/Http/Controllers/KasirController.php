@@ -150,7 +150,6 @@ class KasirController extends Controller
         // --- JIKA TIDAK ADA ATAU MASIH DRAFT: Lanjutkan proses snapshot ---
 
         // A. Ambil Diskon RS (Jumlahkan kolom-kolomnya)
-        $diskonRSData = DB::connection('simgos_pembayaran')->table('diskon')->where('TAGIHAN', $simgosTagihanID)->first();
         $diskonRSData = DB::connection('simgos_pembayaran')->table('diskon')
             ->where('TAGIHAN', $simgosTagihanID)
             ->first();
@@ -167,7 +166,7 @@ class KasirController extends Controller
                 ($diskonRSData->AKOMODASI ?? 0) +
                 ($diskonRSData->SARANA_NON_AKOMODASI ?? 0) +
                 ($diskonRSData->PARAMEDIS ?? 0);
-        }
+        
 
         // B. Ambil Diskon Dokter
         $totalDiskonDokter = DB::connection('simgos_pembayaran')->table('diskon_dokter')
@@ -180,7 +179,6 @@ class KasirController extends Controller
         // 3. Gunakan updateOrCreate seperti sebelumnya (aman karena sudah dicek)
         $tagihanHead = KasirTagihanHead::updateOrCreate(
             ['simgos_tagihan_id' => $simgosTagihanID], // Kunci pencarian
-            [
                 // Data untuk di-update atau di-create
             [ // Data untuk di-update atau di-create
                 'simgos_norm' => $request->simgos_norm,
@@ -435,6 +433,41 @@ class KasirController extends Controller
         return redirect()
             ->route('kasir.tagihan.lokal', ['id' => $id])
             ->with('success', 'Pembayaran berhasil disimpan!');
+    }
+
+    /**
+     * Membatalkan pembayaran (Rollback).
+     * Data pembayaran di-soft delete, status tagihan kembali jadi 'draft'.
+     */
+    public function batalPembayaran(Request $request, $id)
+    {
+        // $id adalah kasir_tagihan_head_id
+        $tagihanHead = KasirTagihanHead::findOrFail($id);
+
+        // 1. Validasi: Hanya bisa batal jika status sudah lunas
+        if ($tagihanHead->status_kasir != 'lunas') {
+            return redirect()
+                ->route('kasir.tagihan.lokal', ['id' => $id])
+                ->with('error', 'Tagihan ini statusnya belum lunas, tidak perlu dibatalkan.');
+        }
+
+        // 2. Proses Rollback Database
+        DB::transaction(function () use ($tagihanHead) {
+            
+            // A. Soft Delete semua pembayaran terkait tagihan ini
+            KasirPembayaran::where('kasir_tagihan_head_id', $tagihanHead->id)->delete();
+
+            // B. Kembalikan status header menjadi 'draft'
+            $tagihanHead->update([
+                'status_kasir' => 'draft'
+            ]);
+        });
+
+        // 3. Redirect kembali
+        // Karena status sudah 'draft', tombol 'Refresh SIMGOS' akan muncul otomatis di view
+        return redirect()
+            ->route('kasir.tagihan.lokal', ['id' => $id])
+            ->with('success', 'Pembayaran BERHASIL DIBATALKAN. Silakan tekan tombol [Refresh] untuk menarik data revisi dari SIMGOS.');
     }
     /**
      * Mencetak Kuitansi Pasien atau Asuransi dalam format PDF.
@@ -719,12 +752,6 @@ class KasirController extends Controller
             return redirect()->route('dashboard')->with('info', 'Sesi kasir untuk role ini sudah dibuka.');
         }
 
-        KasirSesi::create([
-            'nama_sesi' => 'Shift ' . now()->format('d-m-Y H:i'),
-            'waktu_buka' => now(),
-            'dibuka_oleh_user_id' => $user->id,
-            'status' => 'BUKA',
-        ]);
         // Loop jenis kasir → buat beberapa sesi jika perlu
         foreach ($jenisList as $jenis) {
             KasirSesi::create([
@@ -769,9 +796,6 @@ class KasirController extends Controller
         $user = Auth::user();
         $roleId = $user->role_id;
 
-        $sesiAktif = KasirSesi::where('status', 'BUKA')->whereHas('userPembuka', fn($q) => $q->where('role_id', $roleId))->first();
-
-        if (!$sesiAktif) {
         // Mapping role ke jenis kasir yang harus ditutup
         $mapJenisKasir = [
             1 => [1],      // role 1 -> kasir jenis 1
@@ -796,13 +820,6 @@ class KasirController extends Controller
 
         // Tutup semua sesi kasir yang ditemukan
         foreach ($sesiAktifList as $sesi) {
-
-        $sesiAktif->update([
-            'status' => 'TUTUP',
-            'waktu_tutup' => now(),
-            'ditutup_oleh_user_id' => $user->id,
-            'total_penerimaan_sistem' => $totalPenerimaan,
-        ]);
             // hitung total penerimaan berdasarkan sesi ini
             $totalPenerimaan = KasirPembayaran::where('kasir_sesi_id', $sesi->id)
                 ->sum('nominal_bayar');

@@ -118,3 +118,7 @@ Route::middleware(['auth'])->group(function () {
           ->name('laporan.sesi.cetak')
           ->middleware('auth');
 });
+
+// Route batal tagihan
+Route::post('/kasir/tagihan/{id}/batal', [App\Http\Controllers\KasirController::class, 'batalPembayaran'])
+     ->name('kasir.bayar.batal');

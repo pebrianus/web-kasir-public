@@ -168,8 +168,6 @@
                                     <tr class="bg-light">
                                         <td colspan="3" class="text-right font-weight-bold">TOTAL BERSIH (Setelah Diskon)
                                         </td>
-                                        <td colspan="3" class="text-right font-weight-bold">TOTAL BERSIH (Setelah Diskon)
-                                        </td>
                                         <td colspan="3" class="text-right font-weight-bold">
                                             Rp {{ number_format($total_asli - $head->diskon_simgos, 2, ',', '.') }}
                                         </td>
@@ -222,21 +220,6 @@
                                 </button>
                             </form>
                         @endif
-                        {{-- <a href="{{ route('kasir.pasien.tagihan', [
-                            'norm' => $head->simgos_norm,
-                            'jenis_kasir' => request('jenis_kasir'),
-                        ]) }}"
-                    class="btn btn-danger btn-sm" title="Kembali">
-                    <i class="fas fa-times"></i>
-                    </a> --}}
-                        <a href="{{ route('kasir.pasien.tagihan', ['norm' => $head->simgos_norm, 'jenis_kasir' => $jenis_kasir]) }}"
-                            class="btn btn-danger btn-sm" title="Kembali">
-                            <i class="fas fa-times"></i>
-                            'norm' => $head->simgos_norm,
-                            'jenis_kasir' => request('jenis_kasir'),
-                            ]) }}" class="btn btn-danger btn-sm" title="Kembali">
-                            <i class="fas fa-times"></i>
-                        </a> --}}
                         <a href="{{ route('kasir.pasien.tagihan', ['norm' => $head->simgos_norm, 'jenis_kasir' => $jenis_kasir]) }}"
                             class="btn btn-danger btn-sm" title="Kembali">
                             <i class="fas fa-times"></i>
@@ -280,6 +263,15 @@
                             <span class="icon text-white-50"><i class="fas fa-print"></i></span>
                             <span class="text">Cetak Kuitansi Asuransi</span>
                         </a>
+
+                        <hr class="my-4">
+                        <form action="{{ route('kasir.bayar.batal', ['id' => $head->id]) }}" method="POST"
+                            onsubmit="return confirm('Pembayaran akan dihapus dari laporan harian dan status tagihan kembali menjadi DRAFT.\n\nApakah Anda yakin ingin membatalkan pembayaran ini?');">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-danger btn-block">
+                                <i class="fas fa-undo-alt mr-1"></i> Batalkan Pembayaran
+                            </button>
+                        </form>
                     @endif
                     {{-- AKHIR LOGIKA IF/ELSE --}}
 
