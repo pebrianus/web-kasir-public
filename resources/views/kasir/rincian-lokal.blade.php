@@ -220,9 +220,9 @@
                             </form>
                         @endif
                         {{-- <a href="{{ route('kasir.pasien.tagihan', [
-                                    'norm' => $head->simgos_norm,
-                                    'jenis_kasir' => request('jenis_kasir'),
-                                ]) }}" class="btn btn-danger btn-sm" title="Kembali">
+                                        'norm' => $head->simgos_norm,
+                                        'jenis_kasir' => request('jenis_kasir'),
+                                    ]) }}" class="btn btn-danger btn-sm" title="Kembali">
                             <i class="fas fa-times"></i>
                         </a> --}}
                         <a href="{{ route('kasir.pasien.tagihan', ['norm' => $head->simgos_norm, 'jenis_kasir' => $jenis_kasir]) }}"
@@ -285,6 +285,8 @@
             <div class="modal-content">
                 <form action="{{ route('kasir.bayar-tagihan.store', ['id' => $head->id]) }}" method="POST">
                     @csrf
+                    <input type="hidden" name="jenis_kasir" value="{{ $jenis_kasir }}">
+
                     <div class="modal-header">
                         <h5 class="modal-title" id="modalPembayaranLabel">Konfirmasi Pembayaran</h5>
                         <button class="close" type="button" data-dismiss="modal" aria-label="Close">

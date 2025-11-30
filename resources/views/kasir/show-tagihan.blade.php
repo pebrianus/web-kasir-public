@@ -69,8 +69,8 @@
         </div>
         <div class="card-body">
 
-
             {{-- ==== Loop Daftar Tagihan ==== --}}
+
             @forelse ($daftarTagihan as $tagihan)
                 <div class="card mb-3">
                     <div class="card-body">
@@ -101,30 +101,28 @@
 
                                     {{-- 1. SUDAH ADA & LUNAS --}}
                                     @if ($tagihanLokal->status_kasir == 'lunas')
-                                        <a href="{{ route('kasir.tagihan.lokal', [
+                                                    <a href="{{ route('kasir.tagihan.lokal', [
                                             'id' => $tagihanLokal->id,
                                             'jenis_kasir' => request('jenis_kasir'),
-                                        ]) }}"
-                                            class="btn btn-primary btn-icon-split mt-2">
+                                        ]) }}" class="btn btn-primary btn-icon-split mt-2">
 
-                                            <span class="icon text-white-50">
-                                                <i class="fas fa-eye"></i>
-                                            </span>
-                                            <span class="text">Lihat Rincian</span>
-                                        </a>
+                                                        <span class="icon text-white-50">
+                                                            <i class="fas fa-eye"></i>
+                                                        </span>
+                                                        <span class="text">Lihat Rincian</span>
+                                                    </a>
                                     @else
-                                        {{-- 2. SUDAH ADA & MASIH DRAFT --}}
-                                        <a href="{{ route('kasir.tagihan.lokal', [
+                                                    {{-- 2. SUDAH ADA & MASIH DRAFT --}}
+                                                    <a href="{{ route('kasir.tagihan.lokal', [
                                             'id' => $tagihanLokal->id,
                                             'jenis_kasir' => request('jenis_kasir'),
-                                        ]) }}"
-                                            class="btn btn-warning btn-icon-split mt-2">
+                                        ]) }}" class="btn btn-warning btn-icon-split mt-2">
 
-                                            <span class="icon text-white-50">
-                                                <i class="fas fa-arrow-right"></i>
-                                            </span>
-                                            <span class="text">Lanjutkan Proses</span>
-                                        </a>
+                                                        <span class="icon text-white-50">
+                                                            <i class="fas fa-arrow-right"></i>
+                                                        </span>
+                                                        <span class="text">Lanjutkan Proses</span>
+                                                    </a>
                                     @endif
                                 @else
                                     {{-- 3. BELUM ADA: PROSES TAGIHAN --}}
@@ -140,10 +138,8 @@
                                         <input type="hidden" name="nama_ruangan" value="{{ $tagihan->nama_ruangan }}">
                                         <input type="hidden" name="nama_dokter" value="{{ $tagihan->nama_dokter }}">
                                         <input type="hidden" name="nama_asuransi" value="{{ $tagihan->nama_asuransi }}">
-                                        <input type="hidden" name="simgos_tanggal_tagihan"
-                                            value="{{ $tagihan->tgl_tagihan }}">
-                                        <input type="hidden" name="total_asli_simgos"
-                                            value="{{ $tagihan->total_tagihan }}">
+                                        <input type="hidden" name="simgos_tanggal_tagihan" value="{{ $tagihan->tgl_tagihan }}">
+                                        <input type="hidden" name="total_asli_simgos" value="{{ $tagihan->total_tagihan }}">
 
                                         <button type="submit" class="btn btn-success btn-icon-split mt-2">
                                             <span class="icon text-white-50">
@@ -161,7 +157,8 @@
                 {{-- Tampilan jika tidak ada tagihan --}}
                 <div class="text-center">
                     <p>Tidak ada tagihan dengan status
-                        <strong>"{{ $statusFilter == 'proses' ? 'Belum Selesai' : 'Selesai' }}"</strong>.</p>
+                        <strong>"{{ $statusFilter == 'proses' ? 'Belum Selesai' : 'Selesai' }}"</strong>.
+                    </p>
                 </div>
             @endforelse
         </div>

@@ -342,67 +342,142 @@ class KasirController extends Controller
         return redirect()->route('kasir.tagihan.lokal', ['id' => $id, 'jenis_kasir' => $jenisKasir])
             ->with('success', 'Pembagian tagihan berhasil disimpan!');
     }
-    public function storePembayaran(Request $request, $id)
-    {
-        // $id adalah 'kasir_tagihan_head_id'
-        $request->validate([
-            'metode_bayar_id' => 'required|integer',
-            'nominal_bayar' => 'required|numeric|min:0',
-        ]);
-        //  Cek apakah kasir aktif
-        $sesiAktif = KasirSesi::where('status', 'BUKA')->first();
-        if (!$sesiAktif) {
-            // Tolak pembayaran dan kembalikan dengan error
-            return redirect()->back()->with('error', 'Sesi kasir ditutup! Harap "Buka Kasir" terlebih dahulu untuk memproses pembayaran.');
-        }
-        // Ambil data tagihan lokal
-        $tagihanHead = KasirTagihanHead::findOrFail($id);
+    // public function storePembayaran(Request $request, $id)
+    // {
+    //     // $id adalah 'kasir_tagihan_head_id'
+    //     $request->validate([
+    //         'metode_bayar_id' => 'required|integer',
+    //         'nominal_bayar' => 'required|numeric|min:0',
+    //     ]);
+    //     $jenisKasir = $request->jenis_kasir;
 
-        // Pastikan tagihan ini belum lunas (pencegahan double pay)
-        if ($tagihanHead->status_kasir == 'lunas') {
-            return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
-                ->with('info', 'Tagihan ini SUDAH LUNAS.');
-        }
-        // Cek total tagihan terkini dari SIMGOS
-        $totalSimgosTerkini = DB::connection('simgos_pembayaran')->table('tagihan')
-            ->where('ID', $tagihanHead->simgos_tagihan_id)
-            ->value('TOTAL');
+    //     //  Cek apakah kasir aktif
+    //     $sesiAktif = KasirSesi::where('status', 'BUKA')->first();
+    //     if (!$sesiAktif) {
+    //         // Tolak pembayaran dan kembalikan dengan error
+    //         return redirect()->back()->with('error', 'Sesi kasir ditutup! Harap "Buka Kasir" terlebih dahulu untuk memproses pembayaran.');
+    //     }
+    //     // Ambil data tagihan lokal
+    //     $tagihanHead = KasirTagihanHead::findOrFail($id);
 
-        if ((float) $tagihanHead->total_asli_simgos != (float) $totalSimgosTerkini) {
-            // JIKA TIDAK SAMA, batalkan pembayaran!
-            // Beritahu kasir bahwa data telah berubah dan minta mereka me-refresh.
-            return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
-                ->with('error', 'GAGAL BAYAR: Data SIMGOS telah berubah! Total di SIMGOS (Rp ' . number_format($totalSimgosTerkini, 0, ',', '.') . ') tidak cocok dengan data snapshot Anda (Rp ' . number_format($tagihanHead->total_asli_simgos, 0, ',', '.') . '). Silakan klik tombol Refresh (R) di sidebar kanan untuk mengambil data terbaru.');
-        }
+    //     // Pastikan tagihan ini belum lunas (pencegahan double pay)
+    //     if ($tagihanHead->status_kasir == 'lunas') {
+    //         return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
+    //             ->with('info', 'Tagihan ini SUDAH LUNAS.');
+    //     }
+    //     // Cek total tagihan terkini dari SIMGOS
+    //     $totalSimgosTerkini = DB::connection('simgos_pembayaran')->table('tagihan')
+    //         ->where('ID', $tagihanHead->simgos_tagihan_id)
+    //         ->value('TOTAL');
 
-        // Hitung nominal yang SEHARUSNYA dibayar (Server Side Calculation)
-        // Rumus: (Total Asli - Diskon - Ditanggung Asuransi)
-        $nominalWajibBayar = $tagihanHead->total_asli_simgos - $tagihanHead->diskon_simgos - $tagihanHead->total_bayar_asuransi;
+    //     if ((float) $tagihanHead->total_asli_simgos != (float) $totalSimgosTerkini) {
+    //         // JIKA TIDAK SAMA, batalkan pembayaran!
+    //         // Beritahu kasir bahwa data telah berubah dan minta mereka me-refresh.
+    //         return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
+    //             ->with('error', 'GAGAL BAYAR: Data SIMGOS telah berubah! Total di SIMGOS (Rp ' . number_format($totalSimgosTerkini, 0, ',', '.') . ') tidak cocok dengan data snapshot Anda (Rp ' . number_format($tagihanHead->total_asli_simgos, 0, ',', '.') . '). Silakan klik tombol Refresh (R) di sidebar kanan untuk mengambil data terbaru.');
+    //     }
 
-        // Opsional: Jika Anda ingin membolehkan pembayaran parsial (mencicil),
-        // gunakan $request->nominal_bayar.
-        // Tapi jika harus lunas sekaligus, gunakan $nominalWajibBayar.
-        // Di sini saya asumsikan harus sesuai tagihan (untuk keamanan):
-        $nominalFinal = ($nominalWajibBayar < 0) ? 0 : $nominalWajibBayar;
+    //     // Hitung nominal yang SEHARUSNYA dibayar (Server Side Calculation)
+    //     // Rumus: (Total Asli - Diskon - Ditanggung Asuransi)
+    //     $nominalWajibBayar = $tagihanHead->total_asli_simgos - $tagihanHead->diskon_simgos - $tagihanHead->total_bayar_asuransi;
 
-        // 1. Simpan catatan transaksi di tabel log
-        KasirPembayaran::create([
-            'kasir_tagihan_head_id' => $tagihanHead->id,
-            'user_id' => Auth::id(), // ID kasir yang sedang login
-            'metode_bayar_id' => $request->metode_bayar_id,
-            'nominal_bayar' => $request->nominal_bayar,
-            'kasir_sesi_id' => $sesiAktif->id
-        ]);
+    //     // Opsional: Jika Anda ingin membolehkan pembayaran parsial (mencicil),
+    //     // gunakan $request->nominal_bayar.
+    //     // Tapi jika harus lunas sekaligus, gunakan $nominalWajibBayar.
+    //     // Di sini saya asumsikan harus sesuai tagihan (untuk keamanan):
+    //     $nominalFinal = ($nominalWajibBayar < 0) ? 0 : $nominalWajibBayar;
 
-        // 2. Update status tagihan utama menjadi 'lunas'
-        $tagihanHead->update([
-            'status_kasir' => 'lunas'
-        ]);
+    //     // 1. Simpan catatan transaksi di tabel log
+    //     KasirPembayaran::create([
+    //         'kasir_tagihan_head_id' => $tagihanHead->id,
+    //         'user_id' => Auth::id(), // ID kasir yang sedang login
+    //         'metode_bayar_id' => $request->metode_bayar_id,
+    //         'nominal_bayar' => $request->nominal_bayar,
+    //         'kasir_sesi_id' => $sesiAktif->id
+    //     ]);
 
-        // 3. Kembalikan ke halaman rincian
-        return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
-            ->with('success', 'Pembayaran berhasil disimpan!');
+    //     // 2. Update status tagihan utama menjadi 'lunas'
+    //     $tagihanHead->update([
+    //         'status_kasir' => 'lunas'
+    //     ]);
+
+    //     // 3. Kembalikan ke halaman rincian
+    //     return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
+    //         ->with('success', 'Pembayaran berhasil disimpan!');
+    // }
+public function storePembayaran(Request $request, $id)
+{
+    // Validasi input dasar
+    $request->validate([
+        'metode_bayar_id' => 'required|integer',
+        'nominal_bayar' => 'required|numeric|min:0',
+        'jenis_kasir' => 'required|integer'
+    ]);
+
+    $jenisKasir = $request->jenis_kasir;
+
+    // ======================================================
+    // 🔥 VALIDASI SESI AKTIF SESUAI JENIS KASIR + USER LOGIN
+    // ======================================================
+    $sesiAktif = KasirSesi::where('status', 'BUKA')
+        ->where('jenis_kasir', $jenisKasir)
+        ->where('dibuka_oleh_user_id', Auth::id())
+        ->first();
+
+    if (!$sesiAktif) {
+        return redirect()->back()->with(
+            'error',
+            'Sesi kasir untuk jenis kasir ' . $jenisKasir . ' belum dibuka!
+             Silakan buka sesi kasir sesuai role Anda.'
+        );
     }
+
+    // Ambil data tagihan lokal
+    $tagihanHead = KasirTagihanHead::findOrFail($id);
+
+    // Cek tagihan sudah lunas?
+    if ($tagihanHead->status_kasir == 'lunas') {
+        return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
+            ->with('info', 'Tagihan ini SUDAH LUNAS.');
+    }
+
+    // Cek total SIMGOS
+    $totalSimgosTerkini = DB::connection('simgos_pembayaran')->table('tagihan')
+        ->where('ID', $tagihanHead->simgos_tagihan_id)
+        ->value('TOTAL');
+
+    if ((float) $tagihanHead->total_asli_simgos != (float) $totalSimgosTerkini) {
+        return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
+            ->with('error', 'GAGAL BAYAR: Data SIMGOS telah berubah! Silakan refresh.');
+    }
+
+    // Hitung nominal wajib (server-side)
+    $nominalWajibBayar =
+        $tagihanHead->total_asli_simgos
+        - $tagihanHead->diskon_simgos
+        - $tagihanHead->total_bayar_asuransi;
+
+    $nominalFinal = max(0, $nominalWajibBayar);
+
+    // Simpan transaksi pembayaran
+    KasirPembayaran::create([
+        'kasir_tagihan_head_id' => $tagihanHead->id,
+        'user_id' => Auth::id(),
+        'metode_bayar_id' => $request->metode_bayar_id,
+        'nominal_bayar' => $request->nominal_bayar,
+        'kasir_sesi_id' => $sesiAktif->id
+    ]);
+
+    // Update status tagihan
+    $tagihanHead->update([
+        'status_kasir' => 'lunas'
+    ]);
+
+    return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
+        ->with('success', 'Pembayaran berhasil disimpan!');
+}
+
+
     /**
      * Mencetak Kuitansi Pasien atau Asuransi dalam format PDF.
      * VERSI DENGAN AGREGRASI DETAIL TINDAKAN.
