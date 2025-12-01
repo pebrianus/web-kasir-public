@@ -14,33 +14,6 @@ class LaporanController extends Controller
     /**
      * Menampilkan halaman filter Laporan Penerimaan (sesuai mockup).
      */
-    // public function indexPenerimaan(Request $request)
-    // {
-    //     $query = KasirSesi::where('status', 'TUTUP')
-    //         ->orderBy('waktu_tutup', 'desc');
-
-    //     $tanggalInput = $request->input('tanggal');
-    //     $jenis_kasir = $request->input('jenis');
-
-    //     if ($tanggalInput) {
-    //         $tanggal = Carbon::parse($tanggalInput);
-    //         $query->whereDate('waktu_buka', $tanggal);
-    //     } else {
-    //         $query->whereDate('waktu_buka', Carbon::today());
-    //         $tanggalInput = Carbon::today()->format('Y-m-d');
-    //     }
-
-    //     $daftarSesi = $query->paginate(20)->appends([
-    //         'tanggal' => $tanggalInput,
-    //         'jenis' => $jenis_kasir
-    //     ]);
-
-    //     return view('laporan.index-penerimaan', [
-    //         'daftarSesi' => $daftarSesi,
-    //         'tanggalInput' => $tanggalInput,
-    //         'jenis_kasir' => $jenis_kasir
-    //     ]);
-    // }
     public function indexPenerimaan(Request $request)
     {
         $tanggalInput = $request->input('tanggal');
@@ -78,39 +51,7 @@ class LaporanController extends Controller
     /**
      * Menampilkan Laporan Penerimaan Perkasir (Mockup Cetak)
      */
-    // public function showLaporanSesi(Request $request, $id)
-    // {
-    //     $jenis = $request->jenis; // 1 / 2 / 3
 
-    //     $sesi = KasirSesi::where('id', $id)
-    //         ->when($jenis, fn($q) => $q->where('jenis_kasir', $jenis))
-    //         ->firstOrFail();
-
-    //     $daftarTransaksi = KasirTagihanHead::select(
-    //         'kasir_tagihan_head.simgos_norm as norm',
-    //         'kasir_tagihan_head.nama_pasien as nama',
-    //         'kasir_tagihan_head.simgos_tagihan_id as no_tagihan',
-    //         'kasir_tagihan_head.total_bayar_pasien as tunai',
-    //         'kasir_tagihan_head.total_bayar_asuransi as piutang',
-    //         'kasir_pembayaran.created_at as waktu_bayar'
-    //     )
-    //         ->join('kasir_pembayaran', 'kasir_pembayaran.kasir_tagihan_head_id', '=', 'kasir_tagihan_head.id')
-    //         ->where('kasir_pembayaran.kasir_sesi_id', $sesi->id)
-    //         ->orderBy('kasir_pembayaran.created_at', 'asc')
-    //         ->get();
-
-    //     $totals = [
-    //         'total_tunai' => $daftarTransaksi->sum('tunai'),
-    //         'total_piutang' => $daftarTransaksi->sum('piutang'),
-    //         'total_subsidi' => 0,
-    //     ];
-
-    //     return view('laporan.laporan-sesi-detail', [
-    //         'sesi' => $sesi,
-    //         'daftarTransaksi' => $daftarTransaksi,
-    //         'totals' => $totals
-    //     ]);
-    // }
     public function showLaporanSesi(Request $request, $id)
     {
         $jenis = $request->jenis; // 1 / 2 / 3
@@ -127,7 +68,10 @@ class LaporanController extends Controller
             'kasir_tagihan_head.total_bayar_asuransi as piutang',
             'kasir_pembayaran.created_at as waktu_bayar'
         )
-            ->join('kasir_pembayaran', 'kasir_pembayaran.kasir_tagihan_head_id', '=', 'kasir_tagihan_head.id')
+            ->join('kasir_pembayaran', function ($join) {
+                $join->on('kasir_pembayaran.kasir_tagihan_head_id', '=', 'kasir_tagihan_head.id')
+                    ->whereNull('kasir_pembayaran.deleted_at');     // ⬅️ Filter soft delete
+            })
             ->where('kasir_pembayaran.kasir_sesi_id', $sesi->id)
             ->orderBy('kasir_pembayaran.created_at', 'asc')
             ->get();
@@ -170,7 +114,10 @@ class LaporanController extends Controller
             'kasir_tagihan_head.total_bayar_asuransi as piutang',
             'kasir_pembayaran.created_at as waktu_bayar'
         )
-            ->join('kasir_pembayaran', 'kasir_pembayaran.kasir_tagihan_head_id', '=', 'kasir_tagihan_head.id')
+            ->join('kasir_pembayaran', function ($join) {
+                $join->on('kasir_pembayaran.kasir_tagihan_head_id', '=', 'kasir_tagihan_head.id')
+                    ->whereNull('kasir_pembayaran.deleted_at');    // ⬅️ filter soft delete
+            })
             ->where('kasir_pembayaran.kasir_sesi_id', $id)
             ->distinct()
             ->orderBy('kasir_pembayaran.created_at', 'asc')
@@ -187,7 +134,7 @@ class LaporanController extends Controller
             'sesi' => $sesi,
             'daftarTransaksi' => $daftarTransaksi,
             'totals' => $totals,
-            'jenis_kasir' => $jenis_kasir_text  // ⬅️ inilah yang dipakai di PDF
+            'jenis_kasir' => $jenis_kasir_text
         ];
 
         $pdf = PDF::loadView('reports.laporan-sesi-pdf', $dataUntukView);
