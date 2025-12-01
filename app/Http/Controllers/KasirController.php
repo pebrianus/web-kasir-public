@@ -124,6 +124,8 @@ class KasirController extends Controller
             'jenis_kasir' => $jenis_kasir,
         ]);
     }
+
+
     public function prosesDanBukaTagihan(Request $request)
     {
         // 1. Validasi input
@@ -274,6 +276,7 @@ class KasirController extends Controller
         // 7. Redirect ke halaman rincian LOKAL
         return redirect()->route('kasir.tagihan.lokal', ['id' => $tagihanHead->id, 'jenis_kasir' => $request->jenis_kasir]);
     }
+
     public function showLokalTagihan(Request $request, $id)
     {
         $tagihanHead = KasirTagihanHead::findOrFail($id);
@@ -449,12 +452,11 @@ class KasirController extends Controller
         ]);
 
         // 3. Kembalikan ke halaman rincian
-        return redirect()
-            ->route('kasir.tagihan.lokal', ['id' => $id])
-            ->with('success', 'Pembayaran berhasil disimpan!');
+        return redirect()->route('kasir.tagihan.lokal', [
+            'id' => $id,
+            'jenis_kasir' => $jenisKasir
+        ])->with('success', 'Pembayaran berhasil disimpan!');
     }
-
-
 
     /**
      * Membatalkan pembayaran (Rollback).
@@ -464,6 +466,7 @@ class KasirController extends Controller
     {
         // $id adalah kasir_tagihan_head_id
         $tagihanHead = KasirTagihanHead::findOrFail($id);
+        $jenisKasir = $request->jenis_kasir;
 
         // 1. Validasi: Hanya bisa batal jika status sudah lunas
         if ($tagihanHead->status_kasir != 'lunas') {
@@ -487,7 +490,7 @@ class KasirController extends Controller
         // 3. Redirect kembali
         // Karena status sudah 'draft', tombol 'Refresh SIMGOS' akan muncul otomatis di view
         return redirect()
-            ->route('kasir.tagihan.lokal', ['id' => $id])
+            ->route('kasir.tagihan.lokal', ['id' => $id, 'jenis_kasir' => $jenisKasir])
             ->with('success', 'Pembayaran BERHASIL DIBATALKAN. Silakan tekan tombol [Refresh] untuk menarik data revisi dari SIMGOS.');
     }
     /**
@@ -718,7 +721,7 @@ class KasirController extends Controller
 
         // 7. Redirect kembali ke halaman rincian dengan pesan sukses
         return redirect()
-            ->route('kasir.tagihan.lokal', ['id' => $id])
+            ->route('kasir.tagihan.lokal', ['id' => $id, 'jenis_kasir' => $request->jenis_kasir])
             ->with('success', 'Data tagihan berhasil di-refresh dari SIMGOS.');
     }
     // public function bukaSesiKasir(Request $request)
