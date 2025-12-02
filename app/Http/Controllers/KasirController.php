@@ -392,7 +392,6 @@ class KasirController extends Controller
         // ======================================================
         $sesiAktif = KasirSesi::where('status', 'BUKA')
             ->where('jenis_kasir', $jenisKasir)
-            ->where('dibuka_oleh_user_id', Auth::id())
             ->first();
 
         if (!$sesiAktif) {
