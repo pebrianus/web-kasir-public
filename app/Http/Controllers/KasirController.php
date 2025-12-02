@@ -550,7 +550,7 @@ class KasirController extends Controller
                     break;
 
                 case 4: // Farmasi
-                    $subtotals['Biaya Obat'] += $nominal;
+                    $subtotals['Farmasi'] += $nominal; //Penggantian Biaya Obat ke Farmasi
                     break;
 
                 case 3: // Tindakan Medis - PERLU DICEK JENISNYA
