@@ -125,7 +125,6 @@ class KasirController extends Controller
         ]);
     }
 
-
     public function prosesDanBukaTagihan(Request $request)
     {
         // 1. Validasi input
@@ -152,9 +151,7 @@ class KasirController extends Controller
         // --- JIKA TIDAK ADA ATAU MASIH DRAFT: Lanjutkan proses snapshot ---
 
         // A. Ambil Diskon RS (Jumlahkan kolom-kolomnya)
-        $diskonRSData = DB::connection('simgos_pembayaran')->table('diskon')
-            ->where('TAGIHAN', $simgosTagihanID)
-            ->first();
+        $diskonRSData = DB::connection('simgos_pembayaran')->table('diskon')->where('TAGIHAN', $simgosTagihanID)->first();
 
         $totalDiskonRS = 0;
         if ($diskonRSData) {
@@ -164,16 +161,10 @@ class KasirController extends Controller
 
         // B. Ambil Diskon Dokter
         $totalDiskonDokter = DB::connection('simgos_pembayaran')->table('diskon_dokter')->where('TAGIHAN', $simgosTagihanID)->sum('TOTAL');
-        $totalDiskonRS = ($diskonRSData->ADMINISTRASI ?? 0) +
-            ($diskonRSData->AKOMODASI ?? 0) +
-            ($diskonRSData->SARANA_NON_AKOMODASI ?? 0) +
-            ($diskonRSData->PARAMEDIS ?? 0);
-
+        $totalDiskonRS = ($diskonRSData->ADMINISTRASI ?? 0) + ($diskonRSData->AKOMODASI ?? 0) + ($diskonRSData->SARANA_NON_AKOMODASI ?? 0) + ($diskonRSData->PARAMEDIS ?? 0);
 
         // B. Ambil Diskon Dokter
-        $totalDiskonDokter = DB::connection('simgos_pembayaran')->table('diskon_dokter')
-            ->where('TAGIHAN', $simgosTagihanID)
-            ->sum('TOTAL');
+        $totalDiskonDokter = DB::connection('simgos_pembayaran')->table('diskon_dokter')->where('TAGIHAN', $simgosTagihanID)->sum('TOTAL');
 
         // C. Total Gabungan Diskon
         $totalDiskonSimgos = $totalDiskonRS + $totalDiskonDokter;
@@ -182,7 +173,8 @@ class KasirController extends Controller
         $tagihanHead = KasirTagihanHead::updateOrCreate(
             ['simgos_tagihan_id' => $simgosTagihanID], // Kunci pencarian
             // Data untuk di-update atau di-create
-            [ // Data untuk di-update atau di-create
+            [
+                // Data untuk di-update atau di-create
                 'simgos_norm' => $request->simgos_norm,
                 'nama_pasien' => $request->nama_pasien,
                 'nama_ruangan' => $request->nama_ruangan,
@@ -374,15 +366,13 @@ class KasirController extends Controller
             ->with('success', 'Pembagian tagihan berhasil disimpan!');
     }
 
-
-
     public function storePembayaran(Request $request, $id)
     {
         // Validasi input dasar
         $request->validate([
             'metode_bayar_id' => 'required|integer',
             'nominal_bayar' => 'required|numeric|min:0',
-            'jenis_kasir' => 'required|integer'
+            'jenis_kasir' => 'required|integer',
         ]);
 
         $jenisKasir = $request->jenis_kasir;
@@ -390,16 +380,18 @@ class KasirController extends Controller
         // ======================================================
         // 🔥 VALIDASI SESI AKTIF SESUAI JENIS KASIR + USER LOGIN
         // ======================================================
-        $sesiAktif = KasirSesi::where('status', 'BUKA')
-            ->where('jenis_kasir', $jenisKasir)
-            ->first();
+        $sesiAktif = KasirSesi::where('status', 'BUKA')->where('jenis_kasir', $jenisKasir)->first();
 
         if (!$sesiAktif) {
-            return redirect()->back()->with(
-                'error',
-                'Sesi kasir untuk jenis kasir ' . $jenisKasir . ' belum dibuka!
-             Silakan buka sesi kasir sesuai role Anda.'
-            );
+            return redirect()
+                ->back()
+                ->with(
+                    'error',
+                    'Sesi kasir untuk jenis kasir ' .
+                        $jenisKasir .
+                        ' belum dibuka!
+             Silakan buka sesi kasir sesuai role Anda.',
+                );
         }
 
         // Ambil data tagihan lokal
@@ -407,27 +399,22 @@ class KasirController extends Controller
 
         // Cek tagihan sudah lunas?
         if ($tagihanHead->status_kasir == 'lunas') {
-            return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
+            return redirect()
+                ->route('kasir.tagihan.lokal', ['id' => $id])
                 ->with('info', 'Tagihan ini SUDAH LUNAS.');
         }
 
         // Cek total SIMGOS
-        $totalSimgosTerkini = DB::connection('simgos_pembayaran')->table('tagihan')
-            ->where('ID', $tagihanHead->simgos_tagihan_id)
-            ->value('TOTAL');
+        $totalSimgosTerkini = DB::connection('simgos_pembayaran')->table('tagihan')->where('ID', $tagihanHead->simgos_tagihan_id)->value('TOTAL');
 
         if ((float) $tagihanHead->total_asli_simgos != (float) $totalSimgosTerkini) {
-            return redirect()->route('kasir.tagihan.lokal', ['id' => $id])
+            return redirect()
+                ->route('kasir.tagihan.lokal', ['id' => $id])
                 ->with('error', 'GAGAL BAYAR: Data SIMGOS telah berubah! Silakan refresh.');
         }
 
         // Hitung nominal wajib (server-side)
-        $nominalWajibBayar =
-            $tagihanHead->total_asli_simgos
-            - $tagihanHead->diskon_simgos
-            - $tagihanHead->total_bayar_asuransi;
-
-
+        $nominalWajibBayar = $tagihanHead->total_asli_simgos - $tagihanHead->diskon_simgos - $tagihanHead->total_bayar_asuransi;
 
         // Opsional: Jika Anda ingin membolehkan pembayaran parsial (mencicil),
         // gunakan $request->nominal_bayar.
@@ -442,7 +429,7 @@ class KasirController extends Controller
             'metode_bayar_id' => $request->metode_bayar_id,
             'nominal_bayar' => $nominalFinal,
             // 'nominal_bayar' => $request->nominal_bayar,
-            'kasir_sesi_id' => $sesiAktif->id
+            'kasir_sesi_id' => $sesiAktif->id,
         ]);
 
         // 2. Update status tagihan utama menjadi 'lunas'
@@ -451,10 +438,12 @@ class KasirController extends Controller
         ]);
 
         // 3. Kembalikan ke halaman rincian
-        return redirect()->route('kasir.tagihan.lokal', [
-            'id' => $id,
-            'jenis_kasir' => $jenisKasir
-        ])->with('success', 'Pembayaran berhasil disimpan!');
+        return redirect()
+            ->route('kasir.tagihan.lokal', [
+                'id' => $id,
+                'jenis_kasir' => $jenisKasir,
+            ])
+            ->with('success', 'Pembayaran berhasil disimpan!');
     }
 
     /**
@@ -476,13 +465,12 @@ class KasirController extends Controller
 
         // 2. Proses Rollback Database
         DB::transaction(function () use ($tagihanHead) {
-
             // A. Soft Delete semua pembayaran terkait tagihan ini
             KasirPembayaran::where('kasir_tagihan_head_id', $tagihanHead->id)->delete();
 
             // B. Kembalikan status header menjadi 'draft'
             $tagihanHead->update([
-                'status_kasir' => 'draft'
+                'status_kasir' => 'draft',
             ]);
         });
 
@@ -505,8 +493,6 @@ class KasirController extends Controller
             3 => 'Rawat Inap',
         ];
         $jenis_kasir_text = $jenisList[$jenis_kasir] ?? 'Tidak diketahui';
-
-
 
         // 1. Ambil data header tagihan
         $tagihanHead = KasirTagihanHead::findOrFail($id);
@@ -614,7 +600,7 @@ class KasirController extends Controller
             'grandTotal' => $grandTotal,
             'tipeKuitansi' => $tipeKuitansi,
             'namaKasir' => Auth::user()->nama,
-            'jenis_kasir_text' => $jenis_kasir_text
+            'jenis_kasir_text' => $jenis_kasir_text,
         ];
 
         // 7. Load View PDF dan kirim data
@@ -755,8 +741,8 @@ class KasirController extends Controller
         $sesiAktif = KasirSesi::where('status', 'BUKA')->whereHas('userPembuka', fn($q) => $q->where('role_id', $roleId))->first();
         // mapping role ke jenis kasir
         $mapJenisKasir = [
-            1 => [1],      // role 1 -> kasir jenis 1
-            2 => [2, 3],   // role 2 -> kasir jenis 2 dan 3
+            1 => [1], // role 1 -> kasir jenis 1
+            2 => [2, 3], // role 2 -> kasir jenis 2 dan 3
         ];
 
         if (!isset($mapJenisKasir[$roleId])) {
@@ -766,10 +752,7 @@ class KasirController extends Controller
         $jenisList = $mapJenisKasir[$roleId];
 
         // Cek apakah role ini sudah punya sesi buka untuk salah satu jenis kasir
-        $sesiAktif = KasirSesi::where('status', 'BUKA')
-            ->where('dibuka_oleh_user_id', $user->id)
-            ->whereIn('jenis_kasir', $jenisList)
-            ->exists();
+        $sesiAktif = KasirSesi::where('status', 'BUKA')->where('dibuka_oleh_user_id', $user->id)->whereIn('jenis_kasir', $jenisList)->exists();
 
         if ($sesiAktif) {
             return redirect()->route('dashboard')->with('info', 'Sesi kasir untuk role ini sudah dibuka.');
@@ -782,13 +765,12 @@ class KasirController extends Controller
                 'waktu_buka' => now(),
                 'dibuka_oleh_user_id' => $user->id,
                 'jenis_kasir' => $jenis,
-                'status' => 'BUKA'
+                'status' => 'BUKA',
             ]);
         }
 
         return redirect()->route('dashboard')->with('success', 'Sesi kasir berhasil dibuka sesuai role Anda!');
     }
-
 
     public function tutupSesiKasir(Request $request)
     {
@@ -797,8 +779,8 @@ class KasirController extends Controller
 
         // Mapping role ke jenis kasir yang harus ditutup
         $mapJenisKasir = [
-            1 => [1],      // role 1 -> kasir jenis 1
-            2 => [2, 3],   // role 2 -> kasir jenis 2 & 3
+            1 => [1], // role 1 -> kasir jenis 1
+            2 => [2, 3], // role 2 -> kasir jenis 2 & 3
         ];
 
         if (!isset($mapJenisKasir[$roleId])) {
@@ -808,10 +790,7 @@ class KasirController extends Controller
         $jenisList = $mapJenisKasir[$roleId];
 
         // Ambil semua sesi aktif yang sesuai role dan jenis kasir
-        $sesiAktifList = KasirSesi::where('status', 'BUKA')
-            ->where('dibuka_oleh_user_id', $user->id)
-            ->whereIn('jenis_kasir', $jenisList)
-            ->get();
+        $sesiAktifList = KasirSesi::where('status', 'BUKA')->whereIn('jenis_kasir', $jenisList)->get();
 
         if ($sesiAktifList->isEmpty()) {
             return redirect()->route('dashboard')->with('error', 'Tidak ada sesi kasir aktif untuk role Anda.');
@@ -820,21 +799,18 @@ class KasirController extends Controller
         // Tutup semua sesi kasir yang ditemukan
         foreach ($sesiAktifList as $sesi) {
             // hitung total penerimaan berdasarkan sesi ini
-            $totalPenerimaan = KasirPembayaran::where('kasir_sesi_id', $sesi->id)
-                ->sum('nominal_bayar');
+            $totalPenerimaan = KasirPembayaran::where('kasir_sesi_id', $sesi->id)->sum('nominal_bayar');
 
             $sesi->update([
                 'status' => 'TUTUP',
                 'waktu_tutup' => now(),
                 'ditutup_oleh_user_id' => $user->id,
-                'total_penerimaan_sistem' => $totalPenerimaan
+                'total_penerimaan_sistem' => $totalPenerimaan,
             ]);
         }
 
-        return redirect()->route('dashboard')->with(
-            'success',
-            'Semua sesi kasir untuk role Anda berhasil ditutup (' . implode(', ', $jenisList) . ').'
-        );
+        return redirect()
+            ->route('dashboard')
+            ->with('success', 'Semua sesi kasir untuk role Anda berhasil ditutup (' . implode(', ', $jenisList) . ').');
     }
-
 }
