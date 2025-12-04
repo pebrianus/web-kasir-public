@@ -820,23 +820,61 @@ class KasirController extends Controller
         // 4. Daftar nama jenis tarif
         $jenisTarifList = [
             1 => 'Administrasi',
-            // 2 => 'Kamar',
-            3 => 'Tindakan Medis',
+            3 => 'Pemeriksaan Dokter', // default jika tidak ditemukan subjenis
             4 => 'Farmasi',
-            // 5 => 'Penunjang',
-            // 6 => 'Lain-lain',
+            7 => 'Pemeriksaan Radiologi',
+            8 => 'Pemeriksaan Lab',
         ];
 
-        // 5. PROSES GROUPING per jenis tarif
         $detailByJenis = [];
         $grandTotal = 0;
 
         foreach ($detail as $item) {
-            $dibayarPasien = $item->nominal_ditanggung_pasien;
 
+            $dibayarPasien = $item->nominal_ditanggung_pasien;
             $jenis = $item->simgos_jenis_tarif;
 
-            // Masukkan ke grup
+            // --- KHUSUS JENIS 3 (TINDAKAN MEDIS) ---
+            if ($jenis == 3) {
+
+                // Query untuk mencari jenis tindakan (sama seperti di cetakKuitansi)
+                $tindakanInfo = DB::connection('simgos_pembayaran')
+                    ->table('layanan.tindakan_medis as tm')
+                    ->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')
+                    ->where('tm.ID', $item->simgos_ref_id)
+                    ->select('t.JENIS as jenis_tindakan', 't.NAMA as nama_tindakan')
+                    ->first();
+
+                if ($tindakanInfo) {
+
+                    switch ($tindakanInfo->jenis_tindakan) {
+
+                        case 3: // Konsultasi → Pemeriksaan Dokter
+                            $jenis = 3;
+                            break;
+
+                        case 7: // Radiologi
+                            $jenis = 7;
+                            break;
+
+                        case 8: // Lab
+                            $jenis = 8;
+                            break;
+
+                        case 5: // Keperawatan → MASUKKAN sebagai grup baru "Keperawatan"
+                            $jenis = 'keperawatan';
+                            $jenisTarifList['keperawatan'] = "Tindakan Keperawatan";
+                            break;
+
+                        default:
+                            // jenis tindakan lain → fallback ke Pemeriksaan Dokter
+                            $jenis = 3;
+                            break;
+                    }
+                }
+            }
+
+            // ---- MASUKKAN KE GRUP ----
             $detailByJenis[$jenis][] = [
                 'uraian' => $item->deskripsi_item,
                 'qty' => $item->qty,
@@ -845,9 +883,9 @@ class KasirController extends Controller
                 'dibayar' => $dibayarPasien,
             ];
 
-            // Hitung total keseluruhan khusus pasien
             $grandTotal += $dibayarPasien;
         }
+
 
         // 6. Data untuk view
         $dataUntukView = [

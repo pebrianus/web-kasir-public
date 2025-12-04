@@ -238,8 +238,8 @@
                 <th class="no">No</th>
                 <th class="uraian">Uraian</th>
                 <th class="qty">Qty</th>
-                <th class="harga">Harga</th>
-                <th class="subtotal">Dibayar</th>
+                <th class="harga">Harga Satuan</th>
+                <th class="subtotal">Total</th>
             </tr>
         </thead>
         <tbody>
@@ -367,7 +367,7 @@
     {{-- 6. TANDA TANGAN --}}
     <table class="ttd-table">
         <tr>
-            <td>Pasien</td>
+            <td></td>
             <td>Kasir</td>
         </tr>
         <tr>
@@ -375,7 +375,7 @@
             <td class="signature-space"></td>
         </tr>
         <tr>
-            <td>( {{ $head->nama_pasien }} )</td>
+            <td></td>
             <td>( {{ $namaKasir }} )</td>
         </tr>
     </table>
