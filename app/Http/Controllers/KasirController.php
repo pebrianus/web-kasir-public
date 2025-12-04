@@ -723,29 +723,150 @@ class KasirController extends Controller
             ->route('kasir.tagihan.lokal', ['id' => $id, 'jenis_kasir' => $request->jenis_kasir])
             ->with('success', 'Data tagihan berhasil di-refresh dari SIMGOS.');
     }
-    // public function bukaSesiKasir(Request $request)
-    // {
-    //     $user = Auth::user();
-    //     $roleId = $user->role_id;
 
-    //     // cek apakah role ini sudah punya sesi buka
-    //     $sesiAktif = KasirSesi::where('status', 'BUKA')
-    //         ->whereHas('userPembuka', fn($q) => $q->where('role_id', $roleId))
-    //         ->first();
+    public function cetakRincianAsuransi(Request $request, $id)
+    {
+        $jenis_kasir = $request->input('jenis_kasir');
+        $jenisList = [
+            1 => 'Rawat Jalan',
+            2 => 'IGD',
+            3 => 'Rawat Inap',
+        ];
+        $jenis_kasir_text = $jenisList[$jenis_kasir] ?? 'Tidak diketahui';
 
-    //     if ($sesiAktif) {
-    //         return redirect()->route('dashboard')->with('info', 'Sesi kasir untuk role ini sudah dibuka.');
-    //     }
+        // 1. Header Tagihan
+        $tagihanHead = KasirTagihanHead::findOrFail($id);
 
-    //     KasirSesi::create([
-    //         'nama_sesi' => 'Shift ' . now()->format('d-m-Y H:i'),
-    //         'waktu_buka' => now(),
-    //         'dibuka_oleh_user_id' => $user->id,
-    //         'status' => 'BUKA'
-    //     ]);
+        // 2. Tipe kuitansi otomatis Asuransi
+        $tipeKuitansi = 'Asuransi';
 
-    //     return redirect()->route('dashboard')->with('success', 'Sesi kasir berhasil dibuka untuk role Anda!');
-    // }
+        // 3. Ambil detail HANYA yang ditanggung asuransi
+        $detail = KasirTagihanDetail::where('kasir_tagihan_head_id', $id)
+            ->where('nominal_ditanggung_asuransi', '>', 0)
+            ->get();
+
+        // 4. Daftar nama jenis tarif
+        $jenisTarifList = [
+            1 => 'Administrasi',
+            // 2 => 'Kamar',
+            3 => 'Tindakan Medis',
+            4 => 'Farmasi',
+            // 5 => 'Penunjang',
+            // 6 => 'Lain-lain',
+        ];
+
+        // 5. PROSES GROUPING per jenis tarif
+        $detailByJenis = [];
+        $grandTotal = 0;
+
+        foreach ($detail as $item) {
+            // Gunakan nominal ditanggung asuransi
+            $dibayarAsuransi = $item->nominal_ditanggung_asuransi;
+
+            $jenis = $item->simgos_jenis_tarif;
+
+            // Masukkan ke grup
+            $detailByJenis[$jenis][] = [
+                'uraian' => $item->deskripsi_item,
+                'qty' => $item->qty,
+                'harga' => $item->harga_satuan,
+                'subtotal' => $item->subtotal,
+                'dibayar' => $dibayarAsuransi,
+            ];
+
+            // Hitung total keseluruhan khusus asuransi
+            $grandTotal += $dibayarAsuransi;
+        }
+
+        // 6. Data untuk view
+        $dataUntukView = [
+            'head' => $tagihanHead,
+            'detailByJenis' => $detailByJenis,
+            'grandTotal' => $grandTotal,
+            'tipeKuitansi' => $tipeKuitansi,
+            'namaKasir' => Auth::user()->nama,
+            'jenis_kasir_text' => $jenis_kasir_text,
+            'jenisTarifList' => $jenisTarifList,
+        ];
+
+        // 7. Load PDF
+        $pdf = PDF::loadView('reports.rincian', $dataUntukView);
+        $pdf->setPaper([0, 0, 612.28, 842], 'portrait');
+
+        return $pdf->stream('rincian-asuransi-' . $tagihanHead->simgos_tagihan_id . '.pdf');
+    }
+
+    public function cetakRincianPasien(Request $request, $id)
+    {
+        $jenis_kasir = $request->input('jenis_kasir');
+        $jenisList = [
+            1 => 'Rawat Jalan',
+            2 => 'IGD',
+            3 => 'Rawat Inap',
+        ];
+        $jenis_kasir_text = $jenisList[$jenis_kasir] ?? 'Tidak diketahui';
+
+        // 1. Header Tagihan
+        $tagihanHead = KasirTagihanHead::findOrFail($id);
+
+        // 2. Tipe kuitansi otomatis Pasien
+        $tipeKuitansi = 'Pasien';
+
+        // 3. Ambil detail HANYA yang dibayar pasien
+        $detail = KasirTagihanDetail::where('kasir_tagihan_head_id', $id)
+            ->where('nominal_ditanggung_pasien', '>', 0)
+            ->get();
+
+        // 4. Daftar nama jenis tarif
+        $jenisTarifList = [
+            1 => 'Administrasi',
+            // 2 => 'Kamar',
+            3 => 'Tindakan Medis',
+            4 => 'Farmasi',
+            // 5 => 'Penunjang',
+            // 6 => 'Lain-lain',
+        ];
+
+        // 5. PROSES GROUPING per jenis tarif
+        $detailByJenis = [];
+        $grandTotal = 0;
+
+        foreach ($detail as $item) {
+            $dibayarPasien = $item->nominal_ditanggung_pasien;
+
+            $jenis = $item->simgos_jenis_tarif;
+
+            // Masukkan ke grup
+            $detailByJenis[$jenis][] = [
+                'uraian' => $item->deskripsi_item,
+                'qty' => $item->qty,
+                'harga' => $item->harga_satuan,
+                'subtotal' => $item->subtotal,
+                'dibayar' => $dibayarPasien,
+            ];
+
+            // Hitung total keseluruhan khusus pasien
+            $grandTotal += $dibayarPasien;
+        }
+
+        // 6. Data untuk view
+        $dataUntukView = [
+            'head' => $tagihanHead,
+            'detailByJenis' => $detailByJenis,
+            'grandTotal' => $grandTotal,
+            'tipeKuitansi' => $tipeKuitansi,
+            'namaKasir' => Auth::user()->nama,
+            'jenis_kasir_text' => $jenis_kasir_text,
+            'jenisTarifList' => $jenisTarifList,
+        ];
+
+        // 7. Load PDF
+        $pdf = PDF::loadView('reports.rincian', $dataUntukView);
+        $pdf->setPaper([0, 0, 612.28, 842], 'portrait');
+
+        return $pdf->stream('rincian-pasien-' . $tagihanHead->simgos_tagihan_id . '.pdf');
+    }
+
     public function bukaSesiKasir(Request $request)
     {
         $user = Auth::user();

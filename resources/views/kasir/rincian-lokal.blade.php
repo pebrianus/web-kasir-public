@@ -266,6 +266,18 @@
                             <span class="text">Cetak Kuitansi Asuransi</span>
                         </a>
 
+                        <a href="{{ route('rincian.cetak.pasien', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
+                            target="_blank" class="btn btn-secondary btn-icon-split btn-block mb-2">
+                            <span class="icon text-white-50"><i class="fas fa-file-invoice"></i></span>
+                            <span class="text">Cetak Rincian Pasien</span>
+                        </a>
+
+                        <a href="{{ route('rincian.cetak.asuransi', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
+                            target="_blank" class="btn btn-secondary btn-icon-split btn-block mb-2">
+                            <span class="icon text-white-50"><i class="fas fa-file-invoice"></i></span>
+                            <span class="text">Cetak Rincian Asuransi</span>
+                        </a>
+
                         <hr class="my-4">
                         <form action="{{ route('kasir.bayar.batal', ['id' => $head->id]) }}" method="POST"
                             onsubmit="return confirm('Pembayaran akan dihapus dari laporan harian dan status tagihan kembali menjadi DRAFT.\n\nApakah Anda yakin ingin membatalkan pembayaran ini?');">
