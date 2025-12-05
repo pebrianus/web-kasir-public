@@ -1,31 +1,41 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <title>Kwitansi {{ $head->simgos_tagihan_id }}</title>
     <style>
         @page {
-            margin-top: 10px; /* Hapus margin default halaman */
+            margin-top: 10px;
+            /* Hapus margin default halaman */
             margin-left: 25px;
             margin-right: 25px;
             margin-bottom: 5px;
         }
+
         /* Reset dasar & Font */
         body {
-            font-family: Arial, Helvetica, sans-serif; /* Font mirip mesin tik */
-            font-size: 11pt; /* Sedikit lebih besar dari sebelumnya */
+            font-family: Arial, Helvetica, sans-serif;
+            /* Font mirip mesin tik */
+            font-size: 11pt;
+            /* Sedikit lebih besar dari sebelumnya */
             line-height: 1.3;
-            margin: 0; /* Hapus margin default */
+            margin: 0;
+            /* Hapus margin default */
             padding-top: 0;
         }
+
         table {
             width: 100%;
             border-collapse: collapse;
         }
-        td, th {
+
+        td,
+        th {
             padding: 1px 2px;
             vertical-align: top;
-            word-wrap: break-word; /* <-- PAKSA WRAPPING JIKA PANJANG */
+            word-wrap: break-word;
+            /* <-- PAKSA WRAPPING JIKA PANJANG */
         }
 
         /* 1. KOP SURAT */
@@ -34,15 +44,20 @@
             padding-bottom: 3px;
             margin-bottom: 5px;
         }
+
         .kop .logo {
-            width: 50px; /* Sesuaikan ukuran logo */
+            width: 50px;
+            /* Sesuaikan ukuran logo */
             float: left;
             margin-right: 10px;
         }
+
         .kop .rs-info {
             /* float: left; Biarkan mengalir */
         }
-        .kop h4, .kop p {
+
+        .kop h4,
+        .kop p {
             margin: 0;
             font-weight: bold;
         }
@@ -59,12 +74,15 @@
         .info-table td {
             padding-bottom: 1px;
         }
+
         .info-table .label {
             width: 15%;
         }
+
         .info-table .separator {
             width: 2%;
         }
+
         .info-table .value {
             width: 33%;
         }
@@ -75,34 +93,51 @@
             border-top: 1px dashed black;
             border-bottom: 1px dashed black;
         }
+
         .rincian-table th {
             text-align: left;
             border-bottom: 1px dashed black;
             padding: 3px 2px;
         }
+
         .rincian-table td {
             padding: 3px 2px;
         }
-        .rincian-table .no { width: 5%; text-align: center; }
-        .rincian-table .uraian { width: 70%; }
-        .rincian-table .subtotal { width: 25%; text-align: right; }
+
+        .rincian-table .no {
+            width: 5%;
+            text-align: center;
+        }
+
+        .rincian-table .uraian {
+            width: 70%;
+        }
+
+        .rincian-table .subtotal {
+            width: 25%;
+            text-align: right;
+        }
 
         /* 5. BAGIAN TOTAL */
         .total-table {
             margin-top: 5px;
         }
+
         .total-table td {
             padding: 2px 4px;
         }
+
         .total-table .total-label {
             text-align: right;
             padding-right: 10px;
         }
+
         .total-table .total-value {
             text-align: right;
             font-weight: bold;
             width: 25%;
         }
+
         .total-table .pasien-penjamin {
             text-align: right;
             font-size: 11pt;
@@ -112,24 +147,30 @@
         .ttd-table {
             margin-top: 5px;
         }
+
         .ttd-table td {
             text-align: center;
             width: 50%;
             padding-top: 2px;
         }
+
         .ttd-table .signature-space {
-            height: 30px; /* Ruang untuk tanda tangan */
+            height: 50px;
+            /* Ruang untuk tanda tangan */
         }
+
         .footer-info {
             margin-top: 2px;
             font-size: 8pt;
         }
 
         /* Utility */
-        .clear { clear: both; }
-
+        .clear {
+            clear: both;
+        }
     </style>
 </head>
+
 <body>
     {{-- 1. KOP SURAT --}}
     <div class="kop">
@@ -159,7 +200,7 @@
             <td class="separator">:</td>
             <td class="value">{{ $head->simgos_tagihan_id }}</td> {{-- ID lokal --}}
         </tr>
-         <tr>
+        <tr>
             <td class="label">Nama</td>
             <td class="separator">:</td>
             <td class="value">{{ $head->nama_pasien }}</td>
@@ -167,7 +208,7 @@
             <td class="separator">:</td>
             <td class="value">{{ $head->nama_asuransi }}</td>
         </tr>
-         <tr>
+        <tr>
             <td class="label">Tanggal</td>
             <td class="separator">:</td>
             <td class="value">{{ \Carbon\Carbon::parse($head->simgos_tanggal_tagihan)->format('d-m-Y') }}</td>
@@ -203,22 +244,22 @@
 
     {{-- 5. BAGIAN TOTAL --}}
     {{-- <table class="total-table">
-         <tr>
+        <tr>
             <td class="total-label">Jumlah Total</td>
             <td class="total-value">Rp. {{ number_format($grandTotal, 0, ',', '.') }}</td>
         </tr>
-         <tr>
+        <tr>
             // Tampilkan Pasien/Penjamin
             <td class="total-label pasien-penjamin">
-                 @if ($tipeKuitansi == 'Pasien')
-                    Tagihan Pasien
+                @if ($tipeKuitansi == 'Pasien')
+                Tagihan Pasien
                 @else
-                    Tagihan {{ $head->nama_asuransi }}
+                Tagihan {{ $head->nama_asuransi }}
                 @endif
             </td>
             <td class="total-value">Rp. {{ number_format($grandTotal, 0, ',', '.') }}</td>
         </tr>
-         <tr>
+        <tr>
             <td colspan="2" class="total-label" style="padding-top: 10px;">
                 Banjarmasin, {{ \Carbon\Carbon::now()->format('d F Y') }}
             </td>
@@ -226,7 +267,7 @@
     </table> --}}
     <table class="total-table">
         {{-- Baris 1: Selalu Tampilkan "Jumlah Total" (Subtotal/Kotor) --}}
-         <tr>
+        <tr>
             <td class="total-label">Jumlah Total</td>
             <td class="total-value">Rp. {{ number_format($grandTotal, 0, ',', '.') }}</td>
         </tr>
@@ -256,7 +297,7 @@
         @else
             {{-- Jika Tidak Ada Diskon ATAU Kuitansi Asuransi --}}
             {{-- Baris 3: Langsung Nama Penanggung dengan Total Asli --}}
-             <tr>
+            <tr>
                 <td class="total-label pasien-penjamin">
                     @if ($tipeKuitansi == 'Pasien')
                         Tagihan Pasien
@@ -271,7 +312,7 @@
         @endif
 
         {{-- Baris Tanggal --}}
-         <tr>
+        <tr>
             <td colspan="2" class="total-label" style="padding-top: 10px;">
                 Banjarmasin, {{ \Carbon\Carbon::now()->format('d F Y') }}
             </td>
@@ -288,17 +329,20 @@
             <td class="signature-space"></td>
             <td class="signature-space"></td>
         </tr>
-         <tr>
-            <td></td>
+        <tr>
+            <td>
+                Ket: Harga obat sudah termasuk PPN | Waktu : {{ \Carbon\Carbon::now()->format('H:i:s') }}
+            </td>
             <td>( {{ $namaKasir }} )</td>
         </tr>
     </table>
 
     {{-- 7. FOOTER INFO --}}
-    <div class="footer-info">
-        <p>Ket: Harga obat sudah termasuk PPN   |   Waktu : {{ \Carbon\Carbon::now()->format('H:i:s') }}</p>
+    <!-- <div class="footer-info">
+        <p>Ket: Harga obat sudah termasuk PPN | Waktu : {{ \Carbon\Carbon::now()->format('H:i:s') }}</p>
 
-    </div>
+    </div> -->
 
 </body>
+
 </html>
