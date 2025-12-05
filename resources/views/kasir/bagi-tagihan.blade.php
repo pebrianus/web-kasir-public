@@ -29,7 +29,7 @@
                                         <td>{{ $item->deskripsi_item }}
                                             <small class="d-block text-muted">
                                                 {{-- (Tarif Asli: {{ number_format($item->subtotal, 0, ',', '.') }}) --}}
-                                               (Tarif Asli: {{ number_format($item->subtotal, 2, ',', '.') }})
+                                                (Tarif Asli: {{ number_format($item->subtotal, 2, ',', '.') }})
 
                                             </small>
                                         </td>
@@ -39,15 +39,22 @@
                                                     class="form-control form-control-sm input-asuransi"
                                                     name="asuransi[{{ $item->id }}]"
                                                     value="{{ $item->nominal_ditanggung_asuransi }}"
-                                                    data-subtotal="{{ $item->subtotal }}"
-                                                    data-id-rincian="{{ $item->id }}">
+                                                    data-subtotal="{{ $item->subtotal }}" data-id-rincian="{{ $item->id }}">
 
                                                 <div class="input-group-append">
+                                                    <!-- Tombol Copy -->
                                                     <button type="button" class="btn btn-info btn-copy"
-                                                        data-id-rincian="{{ $item->id }}">
-                                                        Copy
+                                                        data-id-rincian="{{ $item->id }}" title="Salin ke Asuransi">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+
+                                                    <!-- Tombol Hapus -->
+                                                    <button type="button" class="btn btn-danger btn-clear"
+                                                        data-id-rincian="{{ $item->id }}" title="Set 0">
+                                                        <i class="fas fa-trash"></i>
                                                     </button>
                                                 </div>
+
                                             </div>
                                         </td>
 
@@ -79,7 +86,7 @@
                                         <td>{{ $item->deskripsi_item }}</td>
                                         <td class="text-right" id="pasien-{{ $item->id }}"> {{-- Beri ID unik --}}
                                             {{-- {{ number_format($item->nominal_ditanggung_pasien, 0, ',', '.') }} --}}
-                                           {{ number_format($item->nominal_ditanggung_pasien, 2, ',', '.') }}
+                                            {{ number_format($item->nominal_ditanggung_pasien, 2, ',', '.') }}
 
                                         </td>
                                     </tr>
@@ -106,59 +113,54 @@
 {{-- TAMBAHKAN JAVASCRIPT DI BAWAH --}}
 @push('scripts')
     <script>
-        $(document).ready(function() {
-            // Fungsi untuk memformat angka sebagai Rupiah
+        $(document).ready(function () {
             function formatRupiah(angka) {
                 return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
             }
 
-            // Tangkap event 'input' (saat kasir mengetik) di kotak asuransi
-            $('.input-asuransi').on('input', function() {
+            $('.input-asuransi').on('input', function () {
                 let inputAsuransi = $(this).val() ? parseFloat($(this).val()) : 0;
                 let subtotal = parseFloat($(this).data('subtotal'));
                 let idRincian = $(this).data('id-rincian');
 
-                // Hitung sisa
                 let sisaPasien = subtotal - inputAsuransi;
-
-                // Jika minus, jangan biarkan
                 if (sisaPasien < 0) {
                     sisaPasien = 0;
-                    $(this).val(subtotal); // Set input asuransi ke nilai max
+                    $(this).val(subtotal);
                 }
 
-                // Update tabel pasien (kanan)
                 $('#pasien-' + idRincian).text(formatRupiah(sisaPasien));
             });
 
-            // Logika Tombol Reset
-            $('#btn-reset').on('click', function(e) {
+            // Reset semua
+            $('#btn-reset').on('click', function (e) {
                 e.preventDefault();
                 if (confirm('Anda yakin ingin mereset pembagian tagihan?')) {
-                    // Set semua input asuransi jadi 0
-                    $('.input-asuransi').each(function() {
-                        $(this).val(0);
-                        // Picu event input untuk update tabel kanan
-                        $(this).trigger('input');
+                    $('.input-asuransi').each(function () {
+                        $(this).val(0).trigger('input');
                     });
                 }
             });
 
-        });
+            // Tombol COPY -> set asuransi = subtotal asli
+            $('.btn-copy').on('click', function () {
+                let id = $(this).data('id-rincian');
+                let input = $(`input[data-id-rincian="${id}"]`);
+                let subtotal = parseFloat(input.data('subtotal'));
 
-        // Tombol COPY -> isi input asuransi dengan nominal pasien
-        $('.btn-copy').on('click', function() {
-            let id = $(this).data('id-rincian');
-            let subtotal = parseFloat($(`input[data-id-rincian="${id}"]`).data('subtotal'));
+                input.val(subtotal).trigger('input');
+            });
 
-            // Ambil nilai asuransi yang sekarang
-            let asuransi = parseFloat($(`input[data-id-rincian="${id}"]`).val()) || 0;
+            // Tombol CLEAR -> set asuransi jadi 0
+            $('.btn-clear').on('click', function () {
+                let id = $(this).data('id-rincian');
+                let input = $(`input[data-id-rincian="${id}"]`);
 
-            // Hitung sisa (pasien)
-            let sisaPasien = subtotal - asuransi;
+                input.val(0).trigger('input');
+            });
 
-            // Set input asuransi = sisa pasien (copy)
-            $(`input[data-id-rincian="${id}"]`).val(sisaPasien).trigger('input');
+
         });
     </script>
+
 @endpush
