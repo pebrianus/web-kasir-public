@@ -96,13 +96,19 @@ Route::post('/kasir/refresh-tagihan/{id}', [KasirController::class, 'refreshTagi
     ->name('kasir.tagihan.refresh')
     ->middleware('auth');
 
-// Rute untuk mencetak rincian tagihan
+// Rute untuk mencetak rincian tagihan asuransi
 Route::get('/kasir/rincian/asuransi/cetak/{id}', [KasirController::class, 'cetakRincianAsuransi'])
     ->name('rincian.cetak.asuransi')
     ->middleware('auth');
 
+// Rute untuk mencetak rincian tagihan pasien
 Route::get('/kasir/rincian/pasien/cetak/{id}', [KasirController::class, 'cetakRincianPasien'])
     ->name('rincian.cetak.pasien')
+    ->middleware('auth');
+
+// Rute untuk mencetak resep pasien
+Route::get('/cetak-resep/{id}', [KasirController::class, 'cetakResep'])
+    ->name('rincian.cetak.resep')
     ->middleware('auth');
 
 // Rute untuk memproses "Buka Kasir"

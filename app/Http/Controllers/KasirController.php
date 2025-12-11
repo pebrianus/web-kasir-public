@@ -891,6 +891,40 @@ class KasirController extends Controller
         return $pdf->stream('rincian-pasien-' . $tagihanHead->simgos_tagihan_id . '.pdf');
     }
 
+    public function cetakResep(Request $request, $id)
+    {
+        $jenis_kasir = $request->input('jenis_kasir');
+        $jenisList = [
+            1 => 'Rawat Jalan',
+            2 => 'IGD',
+            3 => 'Rawat Inap',
+        ];
+        $jenis_kasir_text = $jenisList[$jenis_kasir] ?? 'Tidak diketahui';
+
+        // 1. Ambil data header tagihan
+        $tagihanHead = KasirTagihanHead::findOrFail($id);
+
+        // 2. Ambil data detail farmasi
+        $tagihanDetail = KasirTagihanDetail::where('kasir_tagihan_head_id', $id)
+            ->where('simgos_jenis_tarif', 4) // Hanya farmasi
+            ->get();
+
+        // 3. Data untuk view
+        $dataUntukView = [
+            'head' => $tagihanHead,
+            'detail' => $tagihanDetail,
+            'namaKasir' => Auth::user()->nama,
+            'jenis_kasir_text' => $jenis_kasir_text,
+        ];
+
+        // 4. Load View PDF dan kirim data
+        $pdf = PDF::loadView('reports.resep', $dataUntukView);
+        $pdf->setPaper([0, 0, 612.28, 396.85], 'portrait');
+
+        // 5. Tampilkan PDF
+        return $pdf->stream('resep-' . $tagihanHead->simgos_tagihan_id . '.pdf');
+    }
+
     public function bukaSesiKasir(Request $request)
     {
         $user = Auth::user();
