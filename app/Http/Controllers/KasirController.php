@@ -388,8 +388,8 @@ class KasirController extends Controller
                 ->with(
                     'error',
                     'Sesi kasir untuk jenis kasir ' .
-                        $jenisKasir .
-                        ' belum dibuka!
+                    $jenisKasir .
+                    ' belum dibuka!
              Silakan buka sesi kasir sesuai role Anda.',
                 );
         }
@@ -893,37 +893,58 @@ class KasirController extends Controller
 
     public function cetakResep(Request $request, $id)
     {
-        $jenis_kasir = $request->input('jenis_kasir');
-        $jenisList = [
-            1 => 'Rawat Jalan',
-            2 => 'IGD',
-            3 => 'Rawat Inap',
-        ];
-        $jenis_kasir_text = $jenisList[$jenis_kasir] ?? 'Tidak diketahui';
-
-        // 1. Ambil data header tagihan
+        // 1. Ambil header tagihan
         $tagihanHead = KasirTagihanHead::findOrFail($id);
 
-        // 2. Ambil data detail farmasi
-        $tagihanDetail = KasirTagihanDetail::where('kasir_tagihan_head_id', $id)
-            ->where('simgos_jenis_tarif', 4) // Hanya farmasi
-            ->get();
+        // NOPEN sama dengan simgos_tagihan_id
+        $nopen = $tagihanHead->simgos_tagihan_id;
 
-        // 3. Data untuk view
-        $dataUntukView = [
-            'head' => $tagihanHead,
-            'detail' => $tagihanDetail,
-            'namaKasir' => Auth::user()->nama,
-            'jenis_kasir_text' => $jenis_kasir_text,
+        // Ruangan valid
+        $ruanganValid = [
+            '101070101',
+            '101030801',
+            '101030802',
+            '101030803',
+            '101030804',
+            '101050901',
+            '101070201',
         ];
 
-        // 4. Load View PDF dan kirim data
-        $pdf = PDF::loadView('reports.resep', $dataUntukView);
-        $pdf->setPaper([0, 0, 612.28, 396.85], 'portrait');
+        // 2. Ambil 1 kunjungan berdasarkan NOPEN & ruangan tertentu
+        $kunjungan = DB::connection('simgos_pendaftaran')
+            ->table('kunjungan')
+            ->where('NOPEN', $nopen)
+            ->whereIn('RUANGAN', $ruanganValid)
+            ->orderBy('MASUK', 'desc')
+            ->first();
 
-        // 5. Tampilkan PDF
-        return $pdf->stream('resep-' . $tagihanHead->simgos_tagihan_id . '.pdf');
+        if (!$kunjungan) {
+            return response()->json([
+                'message' => 'Kunjungan tidak ditemukan untuk NOPEN ini.'
+            ], 404);
+        }
+
+        // 3. Ambil farmasi berdasarkan kolom KUNJUNGAN dari tabel layanan.farmasi
+        $farmasi = DB::connection('simgos_layanan')
+            ->table('farmasi')
+            ->where('KUNJUNGAN', $kunjungan->NOMOR)
+            ->whereNull('ALASAN_TIDAK_TERLAYANI')   // FILTER OBAT yang tidak terlayani
+            ->orderBy('TANGGAL', 'asc')
+            ->get();
+
+        // 4. Kirim ke PDF tanpa styling
+        $pdf = PDF::loadView('reports.resep', [
+            'head' => $tagihanHead,
+            'farmasi' => $farmasi,
+            'kunjungan' => $kunjungan,
+            'nopen' => $nopen,
+        ]);
+
+        return $pdf->stream('resep-' . $nopen . '.pdf');
     }
+
+
+
 
     public function bukaSesiKasir(Request $request)
     {
