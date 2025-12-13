@@ -893,13 +893,11 @@ class KasirController extends Controller
 
     public function cetakResep(Request $request, $id)
     {
-        // 1. Ambil header tagihan
+        // === TAGIHAN HEAD ===
         $tagihanHead = KasirTagihanHead::findOrFail($id);
-
-        // NOPEN sama dengan simgos_tagihan_id
         $nopen = $tagihanHead->simgos_tagihan_id;
 
-        // Ruangan valid
+        // === VALIDASI RUANGAN ===
         $ruanganValid = [
             '101070101',
             '101030801',
@@ -910,7 +908,7 @@ class KasirController extends Controller
             '101070201',
         ];
 
-        // 2. Ambil 1 kunjungan berdasarkan NOPEN & ruangan tertentu
+        // === KUNJUNGAN ===
         $kunjungan = DB::connection('simgos_pendaftaran')
             ->table('kunjungan')
             ->where('NOPEN', $nopen)
@@ -919,25 +917,124 @@ class KasirController extends Controller
             ->first();
 
         if (!$kunjungan) {
-            return response()->json([
-                'message' => 'Kunjungan tidak ditemukan untuk NOPEN ini.'
-            ], 404);
+            return response()->json(['message' => 'Kunjungan tidak ditemukan'], 404);
         }
 
-        // 3. Ambil farmasi berdasarkan kolom KUNJUNGAN dari tabel layanan.farmasi
+        // === FARMASI ===
         $farmasi = DB::connection('simgos_layanan')
             ->table('farmasi')
             ->where('KUNJUNGAN', $kunjungan->NOMOR)
-            ->whereNull('ALASAN_TIDAK_TERLAYANI')   // FILTER OBAT yang tidak terlayani
+            ->whereNull('ALASAN_TIDAK_TERLAYANI')
             ->orderBy('TANGGAL', 'asc')
             ->get();
 
-        // 4. Kirim ke PDF tanpa styling
+        if ($farmasi->isEmpty()) {
+            return response()->json(['message' => 'Data farmasi kosong'], 404);
+        }
+
+        // =====================================================
+        // KUMPULKAN ID REFERENSI
+        // =====================================================
+        $barangIds = $farmasi->pluck('FARMASI')->filter()->unique();
+        $frekuensiIds = $farmasi->pluck('FREKUENSI')->filter()->unique();
+        $ruteIds = $farmasi->pluck('RUTE_PEMBERIAN')->filter()->unique();
+        $petunjukIds = $farmasi->pluck('PETUNJUK_RACIKAN')->filter()->unique();
+
+        // === MASTER BARANG ===
+        $barangList = DB::connection('simgos_inventory')
+            ->table('barang')
+            ->whereIn('ID', $barangIds)
+            ->pluck('NAMA', 'ID');
+
+        // === MASTER FREKUENSI ===
+        $frekuensiList = DB::connection('simgos_master')
+            ->table('frekuensi_aturan_resep')
+            ->whereIn('ID', $frekuensiIds)
+            ->pluck('FREKUENSI', 'ID');
+
+        // === MASTER RUTE PEMBERIAN ===
+        $ruteList = DB::connection('simgos_master')
+            ->table('referensi')
+            ->where('JENIS', 217)
+            ->whereIn('ID', $ruteIds)
+            ->pluck('DESKRIPSI', 'ID');
+
+        // === MASTER PETUNJUK RACIKAN (JENIS = 84) ===
+        $petunjukList = DB::connection('simgos_master')
+            ->table('referensi')
+            ->where('JENIS', 84)
+            ->whereIn('ID', $petunjukIds)
+            ->pluck('DESKRIPSI', 'ID');
+
+        // =====================================================
+        // MAP DATA FARMASI
+        // =====================================================
+        $farmasi = $farmasi->map(function ($item) use ($barangList, $frekuensiList, $ruteList, $petunjukList) {
+            $item->nama_obat = $barangList[$item->FARMASI] ?? 'Tidak ditemukan';
+            $item->nama_frekuensi = $frekuensiList[$item->FREKUENSI] ?? '-';
+            $item->nama_rute_pemberian = $ruteList[$item->RUTE_PEMBERIAN] ?? '-';
+            $item->nama_petunjuk_racikan = $petunjukList[$item->PETUNJUK_RACIKAN] ?? null;
+
+            return $item;
+        });
+
+        /**
+         * =====================================================
+         * GROUPING RESEP
+         * GROUP_RACIKAN = 0  -> OBAT TUNGGAL
+         * GROUP_RACIKAN > 0  -> RACIKAN
+         * =====================================================
+         */
+        $resepItems = [];
+        $racikanSudahMasuk = [];
+
+        foreach ($farmasi as $item) {
+
+            // === OBAT TUNGGAL ===
+            if ((int) $item->GROUP_RACIKAN === 0) {
+                $resepItems[] = [
+                    'type' => 'tunggal',
+                    'data' => $item
+                ];
+                continue;
+            }
+
+            // === RACIKAN ===
+            $group = $item->GROUP_RACIKAN;
+
+            if (!in_array($group, $racikanSudahMasuk)) {
+
+                $racikanItems = $farmasi
+                    ->where('GROUP_RACIKAN', $group)
+                    ->values();
+
+                $resepItems[] = [
+                    'type' => 'racikan',
+                    'group' => $group,
+                    'items' => $racikanItems
+                ];
+
+                $racikanSudahMasuk[] = $group;
+            }
+        }
+
+        // === JENIS KASIR ===
+        $jenis_kasir = $request->input('jenis_kasir');
+        $jenisList = [
+            1 => 'Rawat Jalan',
+            2 => 'IGD',
+            3 => 'Rawat Inap',
+        ];
+        $jenis_kasir_text = $jenisList[$jenis_kasir] ?? 'Tidak diketahui';
+
+        // === PDF ===
         $pdf = PDF::loadView('reports.resep', [
             'head' => $tagihanHead,
-            'farmasi' => $farmasi,
             'kunjungan' => $kunjungan,
             'nopen' => $nopen,
+            'farmasi' => $farmasi,
+            'resepItems' => $resepItems,
+            'jenis_kasir_text' => $jenis_kasir_text,
         ]);
 
         return $pdf->stream('resep-' . $nopen . '.pdf');

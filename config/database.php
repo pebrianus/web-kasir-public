@@ -140,6 +140,25 @@ return [
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
+        'simgos_inventory' => [
+            'driver' => 'mysql',
+            'url' => env('DATABASE_URL'),
+            'host' => env('DB_SIMGOS_HOST', '127.0.0.1'), // Asumsi host-nya sama
+            'port' => env('DB_SIMGOS_PORT', '3306'),      // Asumsi port-nya sama
+            'database' => 'inventory',                // <-- 1. UBAH INI
+            'username' => env('DB_SIMGOS_USERNAME'), // <-- 2. UBAH INI (Ambil dari .env)
+            'password' => env('DB_SIMGOS_PASSWORD'), // <-- 3. UBAH INI (Ambil dari .env)
+            'unix_socket' => env('DB_SOCKET', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
 
         'pgsql' => [
             'driver' => 'pgsql',
