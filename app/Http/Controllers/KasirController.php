@@ -893,6 +893,10 @@ class KasirController extends Controller
 
     public function cetakResep(Request $request, $id)
     {
+
+        // === Error Message ===
+        $errorMessage = null;
+
         // === TAGIHAN HEAD ===
         $tagihanHead = KasirTagihanHead::findOrFail($id);
         $nopen = $tagihanHead->simgos_tagihan_id;
@@ -917,7 +921,15 @@ class KasirController extends Controller
             ->first();
 
         if (!$kunjungan) {
-            return response()->json(['message' => 'Kunjungan tidak ditemukan'], 404);
+            $errorMessage = 'Nomor kunjungan tidak ditemukan atau tidak sesuai ruangan.';
+
+            $pdf = PDF::loadView('reports.resep', [
+                'errorMessage' => $errorMessage,
+                'head' => $tagihanHead,
+                'jenis_kasir_text' => $jenis_kasir_text ?? 'Tidak diketahui',
+            ]);
+
+            return $pdf->stream('resep-error-' . $nopen . '.pdf');
         }
 
         // === FARMASI ===
@@ -928,9 +940,20 @@ class KasirController extends Controller
             ->orderBy('TANGGAL', 'asc')
             ->get();
 
+
         if ($farmasi->isEmpty()) {
-            return response()->json(['message' => 'Data farmasi kosong'], 404);
+            $errorMessage = 'Data farmasi kosong / belum ada obat yang dilayani.';
+
+            $pdf = PDF::loadView('reports.resep', [
+                'errorMessage' => $errorMessage,
+                'head' => $tagihanHead,
+                'jenis_kasir_text' => $jenis_kasir_text ?? 'Tidak diketahui',
+            ]);
+
+            return $pdf->stream('resep-error-' . $nopen . '.pdf');
         }
+
+
 
         // =====================================================
         // KUMPULKAN ID REFERENSI

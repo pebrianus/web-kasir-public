@@ -111,6 +111,31 @@
 </head>
 
 <body>
+
+    <!-- HANDLE ERROR MESSAGE -->
+    @if (!empty($errorMessage))
+        <div class="page">
+            <div class="kop">
+                <img src="{{ public_path('images/logo-rs.png') }}" class="logo">
+                <div class="rs-info">
+                    <h4>RS SUAKA INSAN</h4>
+                    <p>Jl. Zafri zam zam no. 60 Banjarmasin</p>
+                </div>
+                <div class="clear"></div>
+            </div>
+
+            <div class="title">INFORMASI RESEP</div>
+
+            <div class="divider"></div>
+
+            <p style="font-size:14pt; margin-top:20px;">
+                {{ $errorMessage }}
+            </p>
+        </div>
+        @php return; @endphp
+    @endif
+
+
     <!-- Container -->
     <div class="page">
         {{-- 1. KOP SURAT --}}
