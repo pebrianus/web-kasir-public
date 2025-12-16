@@ -216,7 +216,7 @@ class KasirController extends Controller
             ->table('rincian_tagihan as rt')
             ->join('layanan.tindakan_medis as tm', 'tm.ID', '=', 'rt.REF_ID')
             ->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')
-            ->where('rt.TAGIHAN', $simgosTagihanID)
+            ->where('rt.TAGIHAN', operator: $simgosTagihanID)
             ->where('rt.JENIS', 3) // 3 = Tindakan
             ->where('tm.STATUS', 1) // Tindakan Medis Aktif
             ->select(
@@ -243,9 +243,43 @@ class KasirController extends Controller
                 'rt.JUMLAH as qty',
                 'rt.TARIF as harga_satuan',
             );
+
+        $queryRawatInap = DB::connection('simgos_pembayaran')
+            ->table('rincian_tagihan as rt')
+            ->join('pendaftaran.kunjungan as k', 'k.NOMOR', '=', 'rt.REF_ID')
+            ->leftJoin('master.ruang_kamar_tidur as rkt', 'rkt.ID', '=', 'k.RUANG_KAMAR_TIDUR')
+            ->leftJoin('master.ruang_kamar as rk', 'rk.ID', '=', 'rkt.RUANG_KAMAR')
+            ->leftJoin('master.referensi as ref', function ($join) {
+                $join->on('ref.ID', '=', 'rk.KELAS')
+                    ->where('ref.JENIS', 19); // Kelas Rawat
+            })
+            ->where('rt.TAGIHAN', $simgosTagihanID)
+            ->where('rt.JENIS', 2) // 2 = Rawat Inap
+            ->select(
+                'rt.REF_ID as simgos_ref_id',
+                'rt.JENIS as simgos_jenis_tarif',
+
+                // 🔥 DI SINI LETAK DB::raw-nya
+                DB::raw(
+                    "TRIM(CONCAT(
+                IFNULL(rkt.TEMPAT_TIDUR, ''),
+                ' ',
+                IFNULL(ref.DESKRIPSI, '')
+            )) as deskripsi_item"
+                ),
+
+                'rt.JUMLAH as qty',
+                'rt.TARIF as harga_satuan'
+            );
+
+
         // --- Akhir Query UNION ---
 
-        $rincianLengkap = $queryAdmin->union($queryTindakan)->union($queryFarmasi)->get();
+        $rincianLengkap = $queryAdmin
+            ->union($queryTindakan)
+            ->union($queryFarmasi)
+            ->union($queryRawatInap)
+            ->get();
 
         // 6. Masukkan data rincian baru
         $dataDetailUntukInsert = [];
