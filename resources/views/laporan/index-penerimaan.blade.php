@@ -48,7 +48,7 @@
                                 <td>{{ $index + 1 }}</td>
                                 <td>{{ $sesi->waktu_buka->format('H:i:s') }}</td>
                                 <td>{{ $sesi->waktu_tutup ? $sesi->waktu_tutup->format('H:i:s') : '-' }}</td>
-                                <td class="text-right">Rp {{ number_format($sesi->total_penerimaan_sistem, 0, ',', '.') }}
+                                <td class="text-right">Rp {{ number_format($sesi->total_penerimaan_hitung, 0, ',', '.') }}
                                 </td>
                                 <td>
                                     <a href="{{ route('laporan.sesi.show', ['id' => $sesi->id, 'jenis' => $jenis_kasir]) }}"

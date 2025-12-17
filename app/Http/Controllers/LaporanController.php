@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\KasirPembayaran;
 use Illuminate\Http\Request;
 use App\Models\KasirSesi;
 use App\Models\KasirTagihanHead;
@@ -17,21 +18,20 @@ class LaporanController extends Controller
     public function indexPenerimaan(Request $request)
     {
         $tanggalInput = $request->input('tanggal');
-        $jenis_kasir = $request->input('jenis'); // 1 / 2 / 3 (optional)
+        $jenis_kasir = $request->input('jenis'); // 1 / 2 / 3
 
         $query = KasirSesi::where('status', 'TUTUP')
             ->orderBy('waktu_tutup', 'desc');
 
         // Filter tanggal
         if ($tanggalInput) {
-            $tanggal = Carbon::parse($tanggalInput);
-            $query->whereDate('waktu_buka', $tanggal);
+            $query->whereDate('waktu_buka', Carbon::parse($tanggalInput));
         } else {
             $query->whereDate('waktu_buka', Carbon::today());
             $tanggalInput = Carbon::today()->format('Y-m-d');
         }
 
-        // Filter jenis kasir jika dipilih
+        // Filter jenis kasir
         if (!empty($jenis_kasir)) {
             $query->where('jenis_kasir', $jenis_kasir);
         }
@@ -40,6 +40,19 @@ class LaporanController extends Controller
             'tanggal' => $tanggalInput,
             'jenis' => $jenis_kasir
         ]);
+
+        // 🔥 HITUNG MANUAL TOTAL PENERIMAAN PER SESI
+        $daftarSesi->getCollection()->transform(function ($sesi) {
+
+            $totalPenerimaan = KasirPembayaran::where('kasir_sesi_id', $sesi->id)
+                ->whereNull('deleted_at')
+                ->sum('nominal_bayar');
+
+            // inject property baru (tidak ke DB)
+            $sesi->total_penerimaan_hitung = $totalPenerimaan;
+
+            return $sesi;
+        });
 
         return view('laporan.index-penerimaan', [
             'daftarSesi' => $daftarSesi,
