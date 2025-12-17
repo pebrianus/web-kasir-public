@@ -21,18 +21,18 @@ class KasirController extends Controller
     /**
      * Ambil nama asuransi dari SIMGOS berdasarkan ID tagihan.
      */
-private function ambilNamaAsuransiSimgos($simgosTagihanID)
-{
-    return DB::connection('simgos_pembayaran')
-        ->table('tagihan as t')
-        ->join('pendaftaran.penjamin as pj', 't.ID', '=', 'pj.NOPEN')
-        ->join('master.referensi as ref_asuransi', function ($join) {
-            $join->on('pj.JENIS', '=', 'ref_asuransi.ID')
-                 ->where('ref_asuransi.JENIS', 10); // Jenis Asuransi
-        })
-        ->where('t.ID', $simgosTagihanID)
-        ->value('ref_asuransi.DESKRIPSI'); // langsung ambil string
-}
+    private function ambilNamaAsuransiSimgos($simgosTagihanID)
+    {
+        return DB::connection('simgos_pembayaran')
+            ->table('tagihan as t')
+            ->join('pendaftaran.penjamin as pj', 't.ID', '=', 'pj.NOPEN')
+            ->join('master.referensi as ref_asuransi', function ($join) {
+                $join->on('pj.JENIS', '=', 'ref_asuransi.ID')
+                    ->where('ref_asuransi.JENIS', 10); // Jenis Asuransi
+            })
+            ->where('t.ID', $simgosTagihanID)
+            ->value('ref_asuransi.DESKRIPSI'); // langsung ambil string
+    }
 
 
 
@@ -234,7 +234,7 @@ private function ambilNamaAsuransiSimgos($simgosTagihanID)
             ->table('rincian_tagihan as rt')
             ->join('layanan.tindakan_medis as tm', 'tm.ID', '=', 'rt.REF_ID')
             ->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')
-            ->where('rt.TAGIHAN', operator: $simgosTagihanID)
+            ->where('rt.TAGIHAN', '=', $simgosTagihanID)
             ->where('rt.JENIS', 3) // 3 = Tindakan
             ->where('tm.STATUS', 1) // Tindakan Medis Aktif
             ->select(
