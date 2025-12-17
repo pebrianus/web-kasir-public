@@ -19,6 +19,24 @@ use Illuminate\Support\Carbon;
 class KasirController extends Controller
 {
     /**
+     * Ambil nama asuransi dari SIMGOS berdasarkan ID tagihan.
+     */
+private function ambilNamaAsuransiSimgos($simgosTagihanID)
+{
+    return DB::connection('simgos_pembayaran')
+        ->table('tagihan as t')
+        ->join('pendaftaran.penjamin as pj', 't.ID', '=', 'pj.NOPEN')
+        ->join('master.referensi as ref_asuransi', function ($join) {
+            $join->on('pj.JENIS', '=', 'ref_asuransi.ID')
+                 ->where('ref_asuransi.JENIS', 10); // Jenis Asuransi
+        })
+        ->where('t.ID', $simgosTagihanID)
+        ->value('ref_asuransi.DESKRIPSI'); // langsung ambil string
+}
+
+
+
+    /**
      * Kembali ke fungsi semula:
      * Mencari data DAN menampilkan view
      */
@@ -669,6 +687,10 @@ class KasirController extends Controller
         // --- Lanjutkan proses refresh (mirip prosesDanBukaTagihan) ---
         $simgosTagihanID = $tagihanHead->simgos_tagihan_id; // Ambil ID SIMGOS dari head
 
+        // 🔥 AMBIL NAMA ASURANSI TERBARU DARI SIMGOS
+        $namaAsuransiBaru = $this->ambilNamaAsuransiSimgos($simgosTagihanID) ?? '-';
+
+
         // --- [BARU] AMBIL DATA DISKON TERBARU DARI SIMGOS ---
         // A. Ambil Diskon RS
         $diskonRSData = DB::connection('simgos_pembayaran')->table('diskon')->where('TAGIHAN', $simgosTagihanID)->first();
@@ -736,6 +758,7 @@ class KasirController extends Controller
         // 6. Update total asli di header
         // $tagihanHead->update(['total_asli_simgos' => $totalAsliBaru]);
         $tagihanHead->update([
+            'nama_asuransi' => $namaAsuransiBaru,
             'total_asli_simgos' => $totalAsliBaru,
             'diskon_simgos' => $totalDiskonSimgos, // Update field diskon
             'total_bayar_asuransi' => 0,
