@@ -785,86 +785,74 @@ class KasirController extends Controller
         // 1. Header Tagihan
         $tagihanHead = KasirTagihanHead::findOrFail($id);
 
-        // 2. Tipe kuitansi otomatis Asuransi
+        // 2. Tipe kuitansi
         $tipeKuitansi = 'Asuransi';
 
-        // 3. Ambil detail HANYA yang ditanggung asuransi
+        // 3. Ambil detail yang DITANGGUNG ASURANSI
         $detail = KasirTagihanDetail::where('kasir_tagihan_head_id', $id)
             ->where('nominal_ditanggung_asuransi', '>', 0)
             ->get();
 
-        // 4. Daftar nama jenis tarif
         $jenisTarifList = [
             1 => 'Administrasi',
             2 => 'Akomodasi',
-            3 => 'Pemeriksaan Dokter', // default jika tidak ditemukan subjenis
+            3 => 'Pemeriksaan Dokter',
             4 => 'Farmasi',
             7 => 'Pemeriksaan Radiologi',
             8 => 'Pemeriksaan Lab',
         ];
 
-        // 5. PROSES GROUPING per jenis tarif
         $detailByJenis = [];
         $grandTotal = 0;
 
         foreach ($detail as $item) {
 
-            $dibayarPasien = $item->nominal_ditanggung_pasien;
+            // ✅ YANG BENAR
+            $dibayarAsuransi = $item->nominal_ditanggung_asuransi;
             $jenis = $item->simgos_jenis_tarif;
 
-            // --- KHUSUS JENIS 3 (TINDAKAN MEDIS) ---
+            // --- KHUSUS TINDAKAN MEDIS ---
             if ($jenis == 3) {
 
-                // Query untuk mencari jenis tindakan (sama seperti di cetakKuitansi)
                 $tindakanInfo = DB::connection('simgos_pembayaran')
                     ->table('layanan.tindakan_medis as tm')
                     ->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')
                     ->where('tm.ID', $item->simgos_ref_id)
-                    ->select('t.JENIS as jenis_tindakan', 't.NAMA as nama_tindakan')
+                    ->select('t.JENIS')
                     ->first();
 
                 if ($tindakanInfo) {
-
-                    switch ($tindakanInfo->jenis_tindakan) {
-
-                        case 3: // Konsultasi → Pemeriksaan Dokter
-                            $jenis = 3;
-                            break;
-
-                        case 7: // Radiologi
+                    switch ($tindakanInfo->JENIS) {
+                        case 7:
                             $jenis = 7;
                             break;
-
-                        case 8: // Lab
+                        case 8:
                             $jenis = 8;
                             break;
-
-                        case 5: // Keperawatan → MASUKKAN sebagai grup baru "Keperawatan"
+                        case 5:
                             $jenis = 'keperawatan';
-                            $jenisTarifList['keperawatan'] = "Tindakan Keperawatan";
+                            $jenisTarifList['keperawatan'] = 'Tindakan Keperawatan';
                             break;
-
                         default:
-                            // jenis tindakan lain → fallback ke Pemeriksaan Dokter
                             $jenis = 3;
                             break;
                     }
                 }
             }
 
-            // ---- MASUKKAN KE GRUP ----
             $detailByJenis[$jenis][] = [
                 'uraian' => $item->deskripsi_item,
                 'qty' => $item->qty,
                 'harga' => $item->harga_satuan,
                 'subtotal' => $item->subtotal,
-                'dibayar' => $dibayarPasien,
+                // ✅ ASURANSI
+                'dibayar' => $dibayarAsuransi,
             ];
 
-            $grandTotal += $dibayarPasien;
+            // ✅ GRAND TOTAL ASURANSI
+            $grandTotal += $dibayarAsuransi;
         }
 
-        // 6. Data untuk view
         $dataUntukView = [
             'head' => $tagihanHead,
             'detailByJenis' => $detailByJenis,
@@ -875,12 +863,12 @@ class KasirController extends Controller
             'jenisTarifList' => $jenisTarifList,
         ];
 
-        // 7. Load PDF
         $pdf = PDF::loadView('reports.rincian', $dataUntukView);
         $pdf->setPaper([0, 0, 612.28, 842], 'portrait');
 
         return $pdf->stream('rincian-asuransi-' . $tagihanHead->simgos_tagihan_id . '.pdf');
     }
+
 
     public function cetakRincianPasien(Request $request, $id)
     {
