@@ -60,7 +60,10 @@ class KasirController extends Controller
 
         // 4. Ganti ->get() menjadi ->paginate()
         //    Kita ambil 10 data per halaman
-        $pasienList = $pasienQuery->paginate(10);
+        //    Urutkan berdasarkan NORM descending
+        $pasienList = $pasienQuery
+            ->orderBy('NORM', 'desc')
+            ->paginate(10);
 
         // 5. Kirim data ke view
         return view('pencarian.rawat-jalan', [
