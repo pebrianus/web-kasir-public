@@ -179,8 +179,7 @@
         <img src="{{ public_path('images/logo-rs.png') }}" alt="Logo RS" class="logo">
         <div class="rs-info">
             <h4>RS SUAKA INSAN</h4>
-            <p>Jl. Zafri zam zam no. 60 Banjarmasin Kec. Banjarmasin Barat</p>
-            <p>Telp. 0511-3354654</p>
+            <p>Jl. Zafri zam zam no. 60 Banjarmasin Kec. Banjarmasin Barat  /   Telp. 0511-3354654</p>
         </div>
         <div class="clear"></div>
     </div>
