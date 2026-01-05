@@ -68,7 +68,7 @@
             text-align: center;
             font-weight: bold;
             font-size: 12pt;
-            margin-bottom: 8px;
+            /* margin-bottom: 8px; */
         }
 
         /* 3. INFO PASIEN/TAGIHAN */
