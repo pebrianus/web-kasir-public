@@ -6,7 +6,8 @@
     <title>Kwitansi {{ $head->simgos_tagihan_id }}</title>
     <style>
         @page {
-            margin-top: 10px;
+            /* margin-top: 10px; */
+            margin-top: 20px;
             /* Hapus margin default halaman */
             margin-left: 25px;
             margin-right: 25px;
@@ -145,13 +146,13 @@
 
         /* 6. TANDA TANGAN & FOOTER */
         .ttd-table {
-            margin-top: 5px;
+            margin-top: 1px;
         }
 
         .ttd-table td {
             text-align: center;
             width: 50%;
-            padding-top: 2px;
+            /* padding-top: 2px; */
         }
 
         .ttd-table .signature-space {
@@ -313,7 +314,7 @@
 
         {{-- Baris Tanggal --}}
         <tr>
-            <td colspan="2" class="total-label" style="padding-top: 10px;">
+            <td colspan="2" class="total-label" style="padding-top: 0px;">
                 Banjarmasin, {{ \Carbon\Carbon::now()->format('d F Y') }}
             </td>
         </tr>

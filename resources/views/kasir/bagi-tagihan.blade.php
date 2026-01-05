@@ -62,6 +62,12 @@
                                 @endforeach
                             </tbody>
                         </table>
+                        <div class="text-right mt-3">
+                            <button type="button" class="btn btn-sm btn-info" id="btn-copy-all">
+                                <i class="fas fa-copy"></i> Copy Semua ke Asuransi
+                            </button>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -159,6 +165,15 @@
                 input.val(0).trigger('input');
             });
 
+            // Tombol COPY ALL -> semua asuransi = subtotal
+            $('#btn-copy-all').on('click', function () {
+                if (!confirm('Salin semua tagihan ke Asuransi?')) return;
+
+                $('.input-asuransi').each(function () {
+                    let subtotal = parseFloat($(this).data('subtotal'));
+                    $(this).val(subtotal).trigger('input');
+                });
+            });
 
         });
     </script>
