@@ -49,7 +49,7 @@ class KasirController extends Controller
         $jenis_kasir = $request->input('jenis');
 
         // 2. Buat query dasar
-        $pasienQuery = Pasien::where('STATUS', 1);
+        $pasienQuery = Pasien::whereIn('STATUS', [1, 2]);
 
         // 3. Jika ada pencarian, tambahkan logika 'where'
         if ($searchQuery) {
