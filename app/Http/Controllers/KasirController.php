@@ -988,13 +988,11 @@ class KasirController extends Controller
         // =====================================================
         // INIT & TAGIHAN
         // =====================================================
-        $errorMessage = null;
-
         $tagihanHead = KasirTagihanHead::findOrFail($id);
         $nopen = $tagihanHead->simgos_tagihan_id;
 
         // =====================================================
-        // JENIS KASIR (AMAN DIPAKAI DI SEMUA RETURN)
+        // JENIS KASIR (AMAN UNTUK SEMUA RETURN)
         // =====================================================
         $jenis_kasir = $request->input('jenis_kasir');
         $jenisList = [
@@ -1014,173 +1012,161 @@ class KasirController extends Controller
             ->get();
 
         if ($kunjunganList->isEmpty()) {
-            $errorMessage = 'Data kunjungan tidak ditemukan.';
-
-            $pdf = PDF::loadView('reports.resep', compact(
-                'errorMessage',
-                'tagihanHead',
-                'jenis_kasir_text'
-            ));
-
-            return $pdf->stream('resep-error-' . $nopen . '.pdf');
+            return PDF::loadView('reports.resep', [
+                'errorMessage' => 'Data kunjungan tidak ditemukan.',
+                'head' => $tagihanHead,
+                'jenis_kasir_text' => $jenis_kasir_text,
+            ])->stream('resep-error-' . $nopen . '.pdf');
         }
 
         // =====================================================
-        // CARI ORDER RESEP DARI SELURUH KUNJUNGAN
+        // AMBIL SEMUA ORDER RESEP DARI SELURUH KUNJUNGAN
         // =====================================================
         $kunjunganIds = $kunjunganList->pluck('NOMOR');
 
-        $orderResep = DB::connection('simgos_layanan')
+        $orderResepList = DB::connection('simgos_layanan')
             ->table('order_resep')
             ->whereIn('KUNJUNGAN', $kunjunganIds)
             ->where('STATUS', 2)
-            ->orderBy('TANGGAL', 'desc')
-            ->first();
-
-        if (!$orderResep) {
-            $errorMessage = 'Order resep tidak ditemukan.';
-
-            $pdf = PDF::loadView('reports.resep', compact(
-                'errorMessage',
-                'tagihanHead',
-                'jenis_kasir_text'
-            ));
-
-            return $pdf->stream('resep-error-' . $nopen . '.pdf');
-        }
-
-        // =====================================================
-        // AMBIL KUNJUNGAN YANG DIPAKAI ORDER RESEP
-        // =====================================================
-        $kunjungan = $kunjunganList
-            ->where('NOMOR', $orderResep->KUNJUNGAN)
-            ->first();
-
-        if (!$kunjungan) {
-            $errorMessage = 'Kunjungan order resep tidak ditemukan.';
-
-            $pdf = PDF::loadView('reports.resep', compact(
-                'errorMessage',
-                'tagihanHead',
-                'jenis_kasir_text'
-            ));
-
-            return $pdf->stream('resep-error-' . $nopen . '.pdf');
-        }
-
-        // =====================================================
-        // AMBIL DETIL RESEP
-        // =====================================================
-        $farmasi = DB::connection('simgos_layanan')
-            ->table('order_detil_resep')
-            ->where('ORDER_ID', $orderResep->NOMOR)
-            ->where('STATUS', 1)
-            ->orderBy('ID', 'asc')
+            ->orderBy('TANGGAL', 'asc')
             ->get();
 
-        if ($farmasi->isEmpty()) {
-            $errorMessage = 'Detil resep kosong / belum ada obat.';
-
-            $pdf = PDF::loadView('reports.resep', compact(
-                'errorMessage',
-                'tagihanHead',
-                'jenis_kasir_text'
-            ));
-
-            return $pdf->stream('resep-error-' . $nopen . '.pdf');
+        if ($orderResepList->isEmpty()) {
+            return PDF::loadView('reports.resep', [
+                'errorMessage' => 'Order resep tidak ditemukan.',
+                'head' => $tagihanHead,
+                'jenis_kasir_text' => $jenis_kasir_text,
+            ])->stream('resep-error-' . $nopen . '.pdf');
         }
 
         // =====================================================
-        // KUMPULKAN REFERENSI MASTER
+        // KUMPULKAN SEMUA DETIL RESEP (UNTUK MASTER DATA)
         // =====================================================
-        $barangIds = $farmasi->pluck('FARMASI')->filter()->unique();
-        $frekuensiIds = $farmasi->pluck('FREKUENSI')->filter()->unique();
-        $ruteIds = $farmasi->pluck('RUTE_PEMBERIAN')->filter()->unique();
-        $petunjukIds = $farmasi->pluck('PETUNJUK_RACIKAN')->filter()->unique();
+        $allFarmasi = DB::connection('simgos_layanan')
+            ->table('order_detil_resep')
+            ->whereIn('ORDER_ID', $orderResepList->pluck('NOMOR'))
+            ->where('STATUS', 1)
+            ->get();
 
+        if ($allFarmasi->isEmpty()) {
+            return PDF::loadView('reports.resep', [
+                'errorMessage' => 'Detil resep kosong.',
+                'head' => $tagihanHead,
+                'jenis_kasir_text' => $jenis_kasir_text,
+            ])->stream('resep-error-' . $nopen . '.pdf');
+        }
+
+        // =====================================================
+        // MASTER DATA (DILOAD SEKALI)
+        // =====================================================
         $barangList = DB::connection('simgos_inventory')
             ->table('barang')
-            ->whereIn('ID', $barangIds)
+            ->whereIn('ID', $allFarmasi->pluck('FARMASI')->unique())
             ->pluck('NAMA', 'ID');
 
         $frekuensiList = DB::connection('simgos_master')
             ->table('frekuensi_aturan_resep')
-            ->whereIn('ID', $frekuensiIds)
+            ->whereIn('ID', $allFarmasi->pluck('FREKUENSI')->unique())
             ->pluck('FREKUENSI', 'ID');
 
         $ruteList = DB::connection('simgos_master')
             ->table('referensi')
             ->where('JENIS', 217)
-            ->whereIn('ID', $ruteIds)
+            ->whereIn('ID', $allFarmasi->pluck('RUTE_PEMBERIAN')->unique())
             ->pluck('DESKRIPSI', 'ID');
 
         $petunjukList = DB::connection('simgos_master')
             ->table('referensi')
             ->where('JENIS', 84)
-            ->whereIn('ID', $petunjukIds)
+            ->whereIn('ID', $allFarmasi->pluck('PETUNJUK_RACIKAN')->unique())
             ->pluck('DESKRIPSI', 'ID');
 
         // =====================================================
-        // MAP DATA FARMASI
+        // BENTUK HALAMAN PDF (1 ORDER = 1 HALAMAN)
         // =====================================================
-        $farmasi = $farmasi->map(function ($item) use ($barangList, $frekuensiList, $ruteList, $petunjukList) {
-            $item->nama_obat = $barangList[$item->FARMASI] ?? 'Tidak ditemukan';
-            $item->nama_frekuensi = $frekuensiList[$item->FREKUENSI] ?? '-';
-            $item->nama_rute_pemberian = $ruteList[$item->RUTE_PEMBERIAN] ?? '-';
-            $item->nama_petunjuk_racikan = $petunjukList[$item->PETUNJUK_RACIKAN] ?? null;
-            return $item;
-        });
+        $resepPages = [];
 
-        // =====================================================
-        // GROUPING RESEP
-        // =====================================================
-        $resepItems = [];
-        $racikanSudahMasuk = [];
+        foreach ($orderResepList as $orderResep) {
 
-        foreach ($farmasi as $item) {
+            $kunjungan = $kunjunganList
+                ->where('NOMOR', $orderResep->KUNJUNGAN)
+                ->first();
 
-            if ((int) $item->GROUP_RACIKAN === 0) {
-                $resepItems[] = [
-                    'type' => 'tunggal',
-                    'data' => $item
-                ];
+            if (!$kunjungan) {
                 continue;
             }
 
-            $group = $item->GROUP_RACIKAN;
+            $farmasi = $allFarmasi
+                ->where('ORDER_ID', $orderResep->NOMOR)
+                ->values();
 
-            if (!in_array($group, $racikanSudahMasuk)) {
-                $racikanItems = $farmasi
-                    ->where('GROUP_RACIKAN', $group)
-                    ->values();
-
-                $resepItems[] = [
-                    'type' => 'racikan',
-                    'group' => $group,
-                    'items' => $racikanItems
-                ];
-
-                $racikanSudahMasuk[] = $group;
+            if ($farmasi->isEmpty()) {
+                continue;
             }
+
+            // === MAP FARMASI ===
+            $farmasi = $farmasi->map(function ($item) use ($barangList, $frekuensiList, $ruteList, $petunjukList) {
+                $item->nama_obat = $barangList[$item->FARMASI] ?? 'Tidak ditemukan';
+                $item->nama_frekuensi = $frekuensiList[$item->FREKUENSI] ?? '-';
+                $item->nama_rute_pemberian = $ruteList[$item->RUTE_PEMBERIAN] ?? '-';
+                $item->nama_petunjuk_racikan = $petunjukList[$item->PETUNJUK_RACIKAN] ?? null;
+                return $item;
+            });
+
+            // === GROUPING RESEP ===
+            $resepItems = [];
+            $racikanSudahMasuk = [];
+
+            foreach ($farmasi as $item) {
+
+                if ((int) $item->GROUP_RACIKAN === 0) {
+                    $resepItems[] = [
+                        'type' => 'tunggal',
+                        'data' => $item
+                    ];
+                    continue;
+                }
+
+                $group = $item->GROUP_RACIKAN;
+
+                if (!in_array($group, $racikanSudahMasuk)) {
+                    $resepItems[] = [
+                        'type' => 'racikan',
+                        'group' => $group,
+                        'items' => $farmasi->where('GROUP_RACIKAN', $group)->values()
+                    ];
+                    $racikanSudahMasuk[] = $group;
+                }
+            }
+
+            $resepPages[] = [
+                'order' => $orderResep,
+                'kunjungan' => $kunjungan,
+                'farmasi' => $farmasi,
+                'resepItems' => $resepItems,
+            ];
+        }
+
+        if (empty($resepPages)) {
+            return PDF::loadView('reports.resep', [
+                'errorMessage' => 'Tidak ada resep valid untuk dicetak.',
+                'head' => $tagihanHead,
+                'jenis_kasir_text' => $jenis_kasir_text,
+            ])->stream('resep-error-' . $nopen . '.pdf');
         }
 
         // =====================================================
-        // CETAK PDF
+        // CETAK PDF MULTI HALAMAN
         // =====================================================
-        $pdf = PDF::loadView('reports.resep', [
+        $pdf = PDF::loadView('reports.resep-multipage', [
             'head' => $tagihanHead,
-            'kunjungan' => $kunjungan,
             'nopen' => $nopen,
-            'farmasi' => $farmasi,
-            'resepItems' => $resepItems,
+            'resepPages' => $resepPages,
             'jenis_kasir_text' => $jenis_kasir_text,
         ]);
 
         return $pdf->stream('resep-' . $nopen . '.pdf');
     }
-
-
-
 
     public function bukaSesiKasir(Request $request)
     {
