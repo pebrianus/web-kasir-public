@@ -985,96 +985,135 @@ class KasirController extends Controller
 
     public function cetakResep(Request $request, $id)
     {
-
-        // === Error Message ===
+        // =====================================================
+        // INIT & TAGIHAN
+        // =====================================================
         $errorMessage = null;
 
-        // === TAGIHAN HEAD ===
         $tagihanHead = KasirTagihanHead::findOrFail($id);
         $nopen = $tagihanHead->simgos_tagihan_id;
 
-        // === VALIDASI RUANGAN ===
-        $ruanganValid = [
-            '101070101',
-            '101030801',
-            '101030802',
-            '101030803',
-            '101030804',
-            '101050901',
-            '101070201',
+        // =====================================================
+        // JENIS KASIR (AMAN DIPAKAI DI SEMUA RETURN)
+        // =====================================================
+        $jenis_kasir = $request->input('jenis_kasir');
+        $jenisList = [
+            1 => 'Rawat Jalan',
+            2 => 'IGD',
+            3 => 'Rawat Inap',
         ];
+        $jenis_kasir_text = $jenisList[$jenis_kasir] ?? 'Tidak diketahui';
 
-        // === KUNJUNGAN ===
-        $kunjungan = DB::connection('simgos_pendaftaran')
+        // =====================================================
+        // AMBIL SEMUA KUNJUNGAN BERDASARKAN NOPEN
+        // =====================================================
+        $kunjunganList = DB::connection('simgos_pendaftaran')
             ->table('kunjungan')
             ->where('NOPEN', $nopen)
-            ->whereIn('RUANGAN', $ruanganValid)
             ->orderBy('MASUK', 'desc')
+            ->get();
+
+        if ($kunjunganList->isEmpty()) {
+            $errorMessage = 'Data kunjungan tidak ditemukan.';
+
+            $pdf = PDF::loadView('reports.resep', compact(
+                'errorMessage',
+                'tagihanHead',
+                'jenis_kasir_text'
+            ));
+
+            return $pdf->stream('resep-error-' . $nopen . '.pdf');
+        }
+
+        // =====================================================
+        // CARI ORDER RESEP DARI SELURUH KUNJUNGAN
+        // =====================================================
+        $kunjunganIds = $kunjunganList->pluck('NOMOR');
+
+        $orderResep = DB::connection('simgos_layanan')
+            ->table('order_resep')
+            ->whereIn('KUNJUNGAN', $kunjunganIds)
+            ->where('STATUS', 2)
+            ->orderBy('TANGGAL', 'desc')
+            ->first();
+
+        if (!$orderResep) {
+            $errorMessage = 'Order resep tidak ditemukan.';
+
+            $pdf = PDF::loadView('reports.resep', compact(
+                'errorMessage',
+                'tagihanHead',
+                'jenis_kasir_text'
+            ));
+
+            return $pdf->stream('resep-error-' . $nopen . '.pdf');
+        }
+
+        // =====================================================
+        // AMBIL KUNJUNGAN YANG DIPAKAI ORDER RESEP
+        // =====================================================
+        $kunjungan = $kunjunganList
+            ->where('NOMOR', $orderResep->KUNJUNGAN)
             ->first();
 
         if (!$kunjungan) {
-            $errorMessage = 'Nomor kunjungan tidak ditemukan atau tidak sesuai ruangan.';
+            $errorMessage = 'Kunjungan order resep tidak ditemukan.';
 
-            $pdf = PDF::loadView('reports.resep', [
-                'errorMessage' => $errorMessage,
-                'head' => $tagihanHead,
-                'jenis_kasir_text' => $jenis_kasir_text ?? 'Tidak diketahui',
-            ]);
-
-            return $pdf->stream('resep-error-' . $nopen . '.pdf');
-        }
-
-        // === FARMASI ===
-        $farmasi = DB::connection('simgos_layanan')
-            ->table('farmasi')
-            ->where('KUNJUNGAN', $kunjungan->NOMOR)
-            ->whereNull('ALASAN_TIDAK_TERLAYANI')
-            ->orderBy('TANGGAL', 'asc')
-            ->get();
-
-
-        if ($farmasi->isEmpty()) {
-            $errorMessage = 'Data farmasi kosong / belum ada obat yang dilayani.';
-
-            $pdf = PDF::loadView('reports.resep', [
-                'errorMessage' => $errorMessage,
-                'head' => $tagihanHead,
-                'jenis_kasir_text' => $jenis_kasir_text ?? 'Tidak diketahui',
-            ]);
+            $pdf = PDF::loadView('reports.resep', compact(
+                'errorMessage',
+                'tagihanHead',
+                'jenis_kasir_text'
+            ));
 
             return $pdf->stream('resep-error-' . $nopen . '.pdf');
         }
-
-
 
         // =====================================================
-        // KUMPULKAN ID REFERENSI
+        // AMBIL DETIL RESEP
+        // =====================================================
+        $farmasi = DB::connection('simgos_layanan')
+            ->table('order_detil_resep')
+            ->where('ORDER_ID', $orderResep->NOMOR)
+            ->where('STATUS', 1)
+            ->orderBy('ID', 'asc')
+            ->get();
+
+        if ($farmasi->isEmpty()) {
+            $errorMessage = 'Detil resep kosong / belum ada obat.';
+
+            $pdf = PDF::loadView('reports.resep', compact(
+                'errorMessage',
+                'tagihanHead',
+                'jenis_kasir_text'
+            ));
+
+            return $pdf->stream('resep-error-' . $nopen . '.pdf');
+        }
+
+        // =====================================================
+        // KUMPULKAN REFERENSI MASTER
         // =====================================================
         $barangIds = $farmasi->pluck('FARMASI')->filter()->unique();
         $frekuensiIds = $farmasi->pluck('FREKUENSI')->filter()->unique();
         $ruteIds = $farmasi->pluck('RUTE_PEMBERIAN')->filter()->unique();
         $petunjukIds = $farmasi->pluck('PETUNJUK_RACIKAN')->filter()->unique();
 
-        // === MASTER BARANG ===
         $barangList = DB::connection('simgos_inventory')
             ->table('barang')
             ->whereIn('ID', $barangIds)
             ->pluck('NAMA', 'ID');
 
-        // === MASTER FREKUENSI ===
         $frekuensiList = DB::connection('simgos_master')
             ->table('frekuensi_aturan_resep')
             ->whereIn('ID', $frekuensiIds)
             ->pluck('FREKUENSI', 'ID');
 
-        // === MASTER RUTE PEMBERIAN ===
         $ruteList = DB::connection('simgos_master')
             ->table('referensi')
             ->where('JENIS', 217)
             ->whereIn('ID', $ruteIds)
             ->pluck('DESKRIPSI', 'ID');
 
-        // === MASTER PETUNJUK RACIKAN (JENIS = 84) ===
         $petunjukList = DB::connection('simgos_master')
             ->table('referensi')
             ->where('JENIS', 84)
@@ -1089,23 +1128,17 @@ class KasirController extends Controller
             $item->nama_frekuensi = $frekuensiList[$item->FREKUENSI] ?? '-';
             $item->nama_rute_pemberian = $ruteList[$item->RUTE_PEMBERIAN] ?? '-';
             $item->nama_petunjuk_racikan = $petunjukList[$item->PETUNJUK_RACIKAN] ?? null;
-
             return $item;
         });
 
-        /**
-         * =====================================================
-         * GROUPING RESEP
-         * GROUP_RACIKAN = 0  -> OBAT TUNGGAL
-         * GROUP_RACIKAN > 0  -> RACIKAN
-         * =====================================================
-         */
+        // =====================================================
+        // GROUPING RESEP
+        // =====================================================
         $resepItems = [];
         $racikanSudahMasuk = [];
 
         foreach ($farmasi as $item) {
 
-            // === OBAT TUNGGAL ===
             if ((int) $item->GROUP_RACIKAN === 0) {
                 $resepItems[] = [
                     'type' => 'tunggal',
@@ -1114,11 +1147,9 @@ class KasirController extends Controller
                 continue;
             }
 
-            // === RACIKAN ===
             $group = $item->GROUP_RACIKAN;
 
             if (!in_array($group, $racikanSudahMasuk)) {
-
                 $racikanItems = $farmasi
                     ->where('GROUP_RACIKAN', $group)
                     ->values();
@@ -1133,16 +1164,9 @@ class KasirController extends Controller
             }
         }
 
-        // === JENIS KASIR ===
-        $jenis_kasir = $request->input('jenis_kasir');
-        $jenisList = [
-            1 => 'Rawat Jalan',
-            2 => 'IGD',
-            3 => 'Rawat Inap',
-        ];
-        $jenis_kasir_text = $jenisList[$jenis_kasir] ?? 'Tidak diketahui';
-
-        // === PDF ===
+        // =====================================================
+        // CETAK PDF
+        // =====================================================
         $pdf = PDF::loadView('reports.resep', [
             'head' => $tagihanHead,
             'kunjungan' => $kunjungan,
