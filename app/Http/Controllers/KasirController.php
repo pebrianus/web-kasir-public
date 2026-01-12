@@ -1042,11 +1042,12 @@ class KasirController extends Controller
         // =====================================================
         // KUMPULKAN SEMUA DETIL RESEP (UNTUK MASTER DATA)
         // =====================================================
+        $excludeFarmasi = [4208, 907];
         $allFarmasi = DB::connection('simgos_layanan')
             ->table('order_detil_resep')
             ->whereIn('ORDER_ID', $orderResepList->pluck('NOMOR'))
             ->where('STATUS', 1)
-            ->where('FARMASI', '!=', 4208) // ❌ kapsul kosong
+            ->whereNotIn('FARMASI', $excludeFarmasi)
             ->get();
 
         if ($allFarmasi->isEmpty()) {
