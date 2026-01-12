@@ -84,6 +84,7 @@
             font-size: 20pt;
             font-weight: bold;
             margin-right: 10px;
+            font-style: italic;
         }
 
         .obat-nama {

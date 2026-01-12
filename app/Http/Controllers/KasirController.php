@@ -1046,6 +1046,7 @@ class KasirController extends Controller
             ->table('order_detil_resep')
             ->whereIn('ORDER_ID', $orderResepList->pluck('NOMOR'))
             ->where('STATUS', 1)
+            ->where('FARMASI', '!=', 4208) // ❌ kapsul kosong
             ->get();
 
         if ($allFarmasi->isEmpty()) {

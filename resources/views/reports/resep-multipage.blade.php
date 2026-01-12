@@ -79,6 +79,7 @@
             font-size: 20pt;
             font-weight: bold;
             margin-right: 10px;
+            font-style: italic;
         }
 
         .obat-nama {
@@ -183,6 +184,7 @@
                     @foreach ($resep['items'] as $item)
                         <div class="obat-nama" style="margin-left:30px;">
                             {{ $item->nama_obat }}
+                            [Jumlah {{ rtrim(rtrim($item->JUMLAH, '0'), '.') }}]
                         </div>
 
                         <div class="aturan">
