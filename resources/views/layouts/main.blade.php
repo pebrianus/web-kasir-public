@@ -105,6 +105,12 @@
                             <a class="collapse-item" href="{{ route('pencarian.rawat-jalan', ['jenis' => 2]) }}">
                                 Kasir IGD
                             </a>
+                            <a class="collapse-item" href="{{ route('pencarian.rawat-jalan', ['jenis' => 4]) }}">
+                                Kasir Lab
+                            </a>
+                            <a class="collapse-item" href="{{ route('pencarian.rawat-jalan', ['jenis' => 5]) }}">
+                                Kasir Radiologi
+                            </a>
                         @endif
 
                     </div>
@@ -170,7 +176,7 @@
 
                                     {{-- Form untuk "Tutup Kasir" --}}
                                     <a class="dropdown-item" href="{{ route('kasir.sesi.tutup') }}"
-                                        onclick="event.preventDefault(); 
+                                        onclick="event.preventDefault();
                                                 if(confirm('Anda yakin ingin menutup sesi kasir saat ini?')) {
                                                     document.getElementById('tutup-kasir-form').submit();
                                                 }">
