@@ -7,6 +7,8 @@
             1 => 'Rawat Jalan',
             2 => 'IGD',
             3 => 'Rawat Inap',
+            4 => 'Laboratorium',
+            5 => 'Radiologi',
         ];
 
         $jenis_kasir = request('jenis');

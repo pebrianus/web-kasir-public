@@ -546,6 +546,8 @@ class KasirController extends Controller
             1 => 'Rawat Jalan',
             2 => 'IGD',
             3 => 'Rawat Inap',
+            4 => 'Laboratorium',
+            5 => 'Radiologi',
         ];
         $jenis_kasir_text = $jenisList[$jenis_kasir] ?? 'Tidak diketahui';
 
@@ -782,6 +784,8 @@ class KasirController extends Controller
             1 => 'Rawat Jalan',
             2 => 'IGD',
             3 => 'Rawat Inap',
+            4 => 'Laboratorium',
+            5 => 'Radiologi',
         ];
         $jenis_kasir_text = $jenisList[$jenis_kasir] ?? 'Tidak diketahui';
 
@@ -880,6 +884,8 @@ class KasirController extends Controller
             1 => 'Rawat Jalan',
             2 => 'IGD',
             3 => 'Rawat Inap',
+            4 => 'Laboratorium',
+            5 => 'Radiologi',
         ];
         $jenis_kasir_text = $jenisList[$jenis_kasir] ?? 'Tidak diketahui';
 
