@@ -27,14 +27,11 @@ class KasirController extends Controller
             ->table('tagihan as t')
             ->join('pendaftaran.penjamin as pj', 't.ID', '=', 'pj.NOPEN')
             ->join('master.referensi as ref_asuransi', function ($join) {
-                $join->on('pj.JENIS', '=', 'ref_asuransi.ID')
-                    ->where('ref_asuransi.JENIS', 10); // Jenis Asuransi
+                $join->on('pj.JENIS', '=', 'ref_asuransi.ID')->where('ref_asuransi.JENIS', 10); // Jenis Asuransi
             })
             ->where('t.ID', $simgosTagihanID)
             ->value('ref_asuransi.DESKRIPSI'); // langsung ambil string
     }
-
-
 
     /**
      * Kembali ke fungsi semula:
@@ -61,9 +58,7 @@ class KasirController extends Controller
         // 4. Ganti ->get() menjadi ->paginate()
         //    Kita ambil 10 data per halaman
         //    Urutkan berdasarkan NORM descending
-        $pasienList = $pasienQuery
-            ->orderBy('NORM', 'desc')
-            ->paginate(10);
+        $pasienList = $pasienQuery->orderBy('NORM', 'desc')->paginate(10);
 
         // 5. Kirim data ke view
         return view('pencarian.rawat-jalan', [
@@ -224,6 +219,8 @@ class KasirController extends Controller
             })
             ->where('rt.TAGIHAN', $simgosTagihanID)
             ->where('rt.JENIS', 1) // 1 = Administrasi
+            // Hanya mengambil harga admin yang lebih 0
+            ->where('rt.TARIF', '>', 0)
             ->select(
                 // <-- PASTIKAN 5 KOLOM INI
                 'rt.REF_ID as simgos_ref_id',
@@ -271,8 +268,7 @@ class KasirController extends Controller
             ->leftJoin('master.ruang_kamar_tidur as rkt', 'rkt.ID', '=', 'k.RUANG_KAMAR_TIDUR')
             ->leftJoin('master.ruang_kamar as rk', 'rk.ID', '=', 'rkt.RUANG_KAMAR')
             ->leftJoin('master.referensi as ref', function ($join) {
-                $join->on('ref.ID', '=', 'rk.KELAS')
-                    ->where('ref.JENIS', 19); // Kelas Rawat
+                $join->on('ref.ID', '=', 'rk.KELAS')->where('ref.JENIS', 19); // Kelas Rawat
             })
             ->where('rt.TAGIHAN', $simgosTagihanID)
             ->where('rt.JENIS', 2) // 2 = Rawat Inap
@@ -286,22 +282,29 @@ class KasirController extends Controller
                 IFNULL(rkt.TEMPAT_TIDUR, ''),
                 ' ',
                 IFNULL(ref.DESKRIPSI, '')
-            )) as deskripsi_item"
+            )) as deskripsi_item",
                 ),
 
                 'rt.JUMLAH as qty',
-                'rt.TARIF as harga_satuan'
+                'rt.TARIF as harga_satuan',
             );
 
+        $queryOksigen = DB::connection('simgos_pembayaran')
+            ->table('rincian_tagihan as rt')
+            ->where('rt.TAGIHAN', $simgosTagihanID)
+            ->where('rt.JENIS', 6) // <--- JENIS 6 = OKSIGEN
+            ->select(
+                'rt.REF_ID as simgos_ref_id',
+                'rt.JENIS as simgos_jenis_tarif',
+                // Kita beri nama manual karena REF_ID-nya adalah ID Kunjungan, bukan ID Master
+                DB::raw("'Pemakaian Oksigen' as deskripsi_item"),
+                'rt.JUMLAH as qty',
+                'rt.TARIF as harga_satuan',
+            );
 
         // --- Akhir Query UNION ---
 
-        $rincianLengkap = $queryAdmin
-            ->union($queryTindakan)
-            ->union($queryFarmasi)
-            ->union($queryRawatInap)
-            ->get();
-
+        $rincianLengkap = $queryAdmin->union($queryTindakan)->union($queryFarmasi)->union($queryRawatInap)->union($queryOksigen)->get();
         // 6. Masukkan data rincian baru
         $dataDetailUntukInsert = [];
         foreach ($rincianLengkap as $item) {
@@ -443,8 +446,8 @@ class KasirController extends Controller
                 ->with(
                     'error',
                     'Sesi kasir untuk jenis kasir ' .
-                    $jenisKasir .
-                    ' belum dibuka!
+                        $jenisKasir .
+                        ' belum dibuka!
              Silakan buka sesi kasir sesuai role Anda.',
                 );
         }
@@ -574,6 +577,7 @@ class KasirController extends Controller
             'Pemeriksaan Lab' => 0, // JENIS=8
             'Tindakan Dokter' => 0, // Default untuk JENIS=3 lainnya
             'Farmasi' => 0,
+            'Gas Medis' => 0,
             // Tindakan Keperawatan akan ditangani terpisah
         ];
         $tindakanKeperawatan = []; // Array untuk item keperawatan
@@ -638,6 +642,10 @@ class KasirController extends Controller
                     }
                     break;
 
+                case 6: // Oksigen
+                    $subtotals['Gas Medis'] += $nominal;
+                    break;
+
                 default:
                     // Jika ada jenis tarif lain, bisa ditambahkan di sini
                     break;
@@ -695,7 +703,6 @@ class KasirController extends Controller
         // 🔥 AMBIL NAMA ASURANSI TERBARU DARI SIMGOS
         $namaAsuransiBaru = $this->ambilNamaAsuransiSimgos($simgosTagihanID) ?? '-';
 
-
         // --- [BARU] AMBIL DATA DISKON TERBARU DARI SIMGOS ---
         // A. Ambil Diskon RS
         $diskonRSData = DB::connection('simgos_pembayaran')->table('diskon')->where('TAGIHAN', $simgosTagihanID)->first();
@@ -724,6 +731,8 @@ class KasirController extends Controller
             })
             ->where('rt.TAGIHAN', $simgosTagihanID)
             ->where('rt.JENIS', 1)
+            // Hanya mengambil harga admin yang lebih 0
+            ->where('rt.TARIF', '>', 0)
             ->select('rt.REF_ID as simgos_ref_id', 'rt.JENIS as simgos_jenis_tarif', DB::raw("'Administrasi' as deskripsi_item"), 'rt.JUMLAH as qty', 'rt.TARIF as harga_satuan');
 
         $queryTindakan = DB::connection('simgos_pembayaran')->table('rincian_tagihan as rt')->join('layanan.tindakan_medis as tm', 'tm.ID', '=', 'rt.REF_ID')->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')->where('rt.TAGIHAN', $simgosTagihanID)->where('rt.JENIS', 3)->where('tm.STATUS', 1)->select('rt.REF_ID as simgos_ref_id', 'rt.JENIS as simgos_jenis_tarif', 't.NAMA as deskripsi_item', 'rt.JUMLAH as qty', 'rt.TARIF as harga_satuan');
@@ -736,9 +745,23 @@ class KasirController extends Controller
             ->where('rt.JENIS', 4)
             ->whereIn('f.STATUS', [1, 2])
             ->select('rt.REF_ID as simgos_ref_id', 'rt.JENIS as simgos_jenis_tarif', 'b.NAMA as deskripsi_item', 'rt.JUMLAH as qty', 'rt.TARIF as harga_satuan');
+
+        $queryRawatInap = DB::connection('simgos_pembayaran')
+            ->table('rincian_tagihan as rt')
+            ->join('pendaftaran.kunjungan as k', 'k.NOMOR', '=', 'rt.REF_ID')
+            ->leftJoin('master.ruang_kamar_tidur as rkt', 'rkt.ID', '=', 'k.RUANG_KAMAR_TIDUR')
+            ->leftJoin('master.ruang_kamar as rk', 'rk.ID', '=', 'rkt.RUANG_KAMAR')
+            ->leftJoin('master.referensi as ref', function ($join) {
+                $join->on('ref.ID', '=', 'rk.KELAS')->where('ref.JENIS', 19);
+            })
+            ->where('rt.TAGIHAN', $simgosTagihanID)
+            ->where('rt.JENIS', 2) // 2 = Rawat Inap
+            ->select('rt.REF_ID as simgos_ref_id', 'rt.JENIS as simgos_jenis_tarif', DB::raw("TRIM(CONCAT(IFNULL(rkt.TEMPAT_TIDUR, ''), ' ', IFNULL(ref.DESKRIPSI, ''))) as deskripsi_item"), 'rt.JUMLAH as qty', 'rt.TARIF as harga_satuan');
+
+        $queryOksigen = DB::connection('simgos_pembayaran')->table('rincian_tagihan as rt')->where('rt.TAGIHAN', $simgosTagihanID)->where('rt.JENIS', 6)->select('rt.REF_ID as simgos_ref_id', 'rt.JENIS as simgos_jenis_tarif', DB::raw("'Pemakaian Oksigen' as deskripsi_item"), 'rt.JUMLAH as qty', 'rt.TARIF as harga_satuan');
         // --- Akhir Query UNION ---
 
-        $rincianLengkap = $queryAdmin->union($queryTindakan)->union($queryFarmasi)->get();
+        $rincianLengkap = $queryAdmin->union($queryTindakan)->union($queryFarmasi)->union($queryRawatInap)->union($queryOksigen)->get();
 
         // 5. Masukkan data rincian baru
         $dataDetailUntukInsert = [];
@@ -796,15 +819,14 @@ class KasirController extends Controller
         $tipeKuitansi = 'Asuransi';
 
         // 3. Ambil detail yang DITANGGUNG ASURANSI
-        $detail = KasirTagihanDetail::where('kasir_tagihan_head_id', $id)
-            ->where('nominal_ditanggung_asuransi', '>', 0)
-            ->get();
+        $detail = KasirTagihanDetail::where('kasir_tagihan_head_id', $id)->where('nominal_ditanggung_asuransi', '>', 0)->get();
 
         $jenisTarifList = [
             1 => 'Administrasi',
             2 => 'Akomodasi',
             3 => 'Pemeriksaan Dokter',
             4 => 'Farmasi',
+            6 => 'Gas Medis / Oksigen',
             7 => 'Pemeriksaan Radiologi',
             8 => 'Pemeriksaan Lab',
         ];
@@ -813,20 +835,13 @@ class KasirController extends Controller
         $grandTotal = 0;
 
         foreach ($detail as $item) {
-
             // ✅ YANG BENAR
             $dibayarAsuransi = $item->nominal_ditanggung_asuransi;
             $jenis = $item->simgos_jenis_tarif;
 
             // --- KHUSUS TINDAKAN MEDIS ---
             if ($jenis == 3) {
-
-                $tindakanInfo = DB::connection('simgos_pembayaran')
-                    ->table('layanan.tindakan_medis as tm')
-                    ->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')
-                    ->where('tm.ID', $item->simgos_ref_id)
-                    ->select('t.JENIS')
-                    ->first();
+                $tindakanInfo = DB::connection('simgos_pembayaran')->table('layanan.tindakan_medis as tm')->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')->where('tm.ID', $item->simgos_ref_id)->select('t.JENIS')->first();
 
                 if ($tindakanInfo) {
                     switch ($tindakanInfo->JENIS) {
@@ -876,7 +891,6 @@ class KasirController extends Controller
         return $pdf->stream('rincian-asuransi-' . $tagihanHead->simgos_tagihan_id . '.pdf');
     }
 
-
     public function cetakRincianPasien(Request $request, $id)
     {
         $jenis_kasir = $request->input('jenis_kasir');
@@ -896,9 +910,7 @@ class KasirController extends Controller
         $tipeKuitansi = 'Pasien';
 
         // 3. Ambil detail HANYA yang dibayar pasien
-        $detail = KasirTagihanDetail::where('kasir_tagihan_head_id', $id)
-            ->where('nominal_ditanggung_pasien', '>', 0)
-            ->get();
+        $detail = KasirTagihanDetail::where('kasir_tagihan_head_id', $id)->where('nominal_ditanggung_pasien', '>', 0)->get();
 
         // 4. Daftar nama jenis tarif
         $jenisTarifList = [
@@ -906,6 +918,7 @@ class KasirController extends Controller
             2 => 'Akomodasi',
             3 => 'Pemeriksaan Dokter', // default jika tidak ditemukan subjenis
             4 => 'Farmasi',
+            6 => 'Gas Medis / Oksigen',
             7 => 'Pemeriksaan Radiologi',
             8 => 'Pemeriksaan Lab',
         ];
@@ -914,25 +927,16 @@ class KasirController extends Controller
         $grandTotal = 0;
 
         foreach ($detail as $item) {
-
             $dibayarPasien = $item->nominal_ditanggung_pasien;
             $jenis = $item->simgos_jenis_tarif;
 
             // --- KHUSUS JENIS 3 (TINDAKAN MEDIS) ---
             if ($jenis == 3) {
-
                 // Query untuk mencari jenis tindakan (sama seperti di cetakKuitansi)
-                $tindakanInfo = DB::connection('simgos_pembayaran')
-                    ->table('layanan.tindakan_medis as tm')
-                    ->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')
-                    ->where('tm.ID', $item->simgos_ref_id)
-                    ->select('t.JENIS as jenis_tindakan', 't.NAMA as nama_tindakan')
-                    ->first();
+                $tindakanInfo = DB::connection('simgos_pembayaran')->table('layanan.tindakan_medis as tm')->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')->where('tm.ID', $item->simgos_ref_id)->select('t.JENIS as jenis_tindakan', 't.NAMA as nama_tindakan')->first();
 
                 if ($tindakanInfo) {
-
                     switch ($tindakanInfo->jenis_tindakan) {
-
                         case 3: // Konsultasi → Pemeriksaan Dokter
                             $jenis = 3;
                             break;
@@ -947,7 +951,7 @@ class KasirController extends Controller
 
                         case 5: // Keperawatan → MASUKKAN sebagai grup baru "Keperawatan"
                             $jenis = 'keperawatan';
-                            $jenisTarifList['keperawatan'] = "Tindakan Keperawatan";
+                            $jenisTarifList['keperawatan'] = 'Tindakan Keperawatan';
                             break;
 
                         default:
@@ -969,7 +973,6 @@ class KasirController extends Controller
 
             $grandTotal += $dibayarPasien;
         }
-
 
         // 6. Data untuk view
         $dataUntukView = [
@@ -1011,11 +1014,7 @@ class KasirController extends Controller
         // =====================================================
         // AMBIL SEMUA KUNJUNGAN BERDASARKAN NOPEN
         // =====================================================
-        $kunjunganList = DB::connection('simgos_pendaftaran')
-            ->table('kunjungan')
-            ->where('NOPEN', $nopen)
-            ->orderBy('MASUK', 'desc')
-            ->get();
+        $kunjunganList = DB::connection('simgos_pendaftaran')->table('kunjungan')->where('NOPEN', $nopen)->orderBy('MASUK', 'desc')->get();
 
         if ($kunjunganList->isEmpty()) {
             return PDF::loadView('reports.resep', [
@@ -1030,12 +1029,7 @@ class KasirController extends Controller
         // =====================================================
         $kunjunganIds = $kunjunganList->pluck('NOMOR');
 
-        $orderResepList = DB::connection('simgos_layanan')
-            ->table('order_resep')
-            ->whereIn('KUNJUNGAN', $kunjunganIds)
-            ->where('STATUS', 2)
-            ->orderBy('TANGGAL', 'asc')
-            ->get();
+        $orderResepList = DB::connection('simgos_layanan')->table('order_resep')->whereIn('KUNJUNGAN', $kunjunganIds)->where('STATUS', 2)->orderBy('TANGGAL', 'asc')->get();
 
         if ($orderResepList->isEmpty()) {
             return PDF::loadView('reports.resep', [
@@ -1049,12 +1043,7 @@ class KasirController extends Controller
         // KUMPULKAN SEMUA DETIL RESEP (UNTUK MASTER DATA)
         // =====================================================
         $excludeFarmasi = [4208, 907];
-        $allFarmasi = DB::connection('simgos_layanan')
-            ->table('order_detil_resep')
-            ->whereIn('ORDER_ID', $orderResepList->pluck('NOMOR'))
-            ->where('STATUS', 1)
-            ->whereNotIn('FARMASI', $excludeFarmasi)
-            ->get();
+        $allFarmasi = DB::connection('simgos_layanan')->table('order_detil_resep')->whereIn('ORDER_ID', $orderResepList->pluck('NOMOR'))->where('STATUS', 1)->whereNotIn('FARMASI', $excludeFarmasi)->get();
 
         if ($allFarmasi->isEmpty()) {
             return PDF::loadView('reports.resep', [
@@ -1095,18 +1084,13 @@ class KasirController extends Controller
         $resepPages = [];
 
         foreach ($orderResepList as $orderResep) {
-
-            $kunjungan = $kunjunganList
-                ->where('NOMOR', $orderResep->KUNJUNGAN)
-                ->first();
+            $kunjungan = $kunjunganList->where('NOMOR', $orderResep->KUNJUNGAN)->first();
 
             if (!$kunjungan) {
                 continue;
             }
 
-            $farmasi = $allFarmasi
-                ->where('ORDER_ID', $orderResep->NOMOR)
-                ->values();
+            $farmasi = $allFarmasi->where('ORDER_ID', $orderResep->NOMOR)->values();
 
             if ($farmasi->isEmpty()) {
                 continue;
@@ -1126,11 +1110,10 @@ class KasirController extends Controller
             $racikanSudahMasuk = [];
 
             foreach ($farmasi as $item) {
-
                 if ((int) $item->GROUP_RACIKAN === 0) {
                     $resepItems[] = [
                         'type' => 'tunggal',
-                        'data' => $item
+                        'data' => $item,
                     ];
                     continue;
                 }
@@ -1141,7 +1124,7 @@ class KasirController extends Controller
                     $resepItems[] = [
                         'type' => 'racikan',
                         'group' => $group,
-                        'items' => $farmasi->where('GROUP_RACIKAN', $group)->values()
+                        'items' => $farmasi->where('GROUP_RACIKAN', $group)->values(),
                     ];
                     $racikanSudahMasuk[] = $group;
                 }
