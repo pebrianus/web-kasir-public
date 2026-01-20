@@ -4,6 +4,8 @@
                 1 => 'Rawat Jalan',
                 2 => 'IGD',
                 3 => 'Rawat Inap',
+                4 => 'Lab',
+                5 => 'Radiologi',
             ];
         @endphp <div class="card shadow mb-4">
         <div class="card-header py-3">
