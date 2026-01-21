@@ -82,7 +82,7 @@ class KasirController extends Controller
         // 2. Ambil daftar tagihan (masih harga brutto)
         $daftarTagihanQuery = DB::connection('simgos_pembayaran')
             ->table('tagihan as t')
-            ->join('simgos_pembayaran.tagihan_pendaftaran as tp', 'tp.TAGIHAN', '=', 't.ID')
+            ->join('tagihan_pendaftaran as tp', 'tp.TAGIHAN', '=', 't.ID')
             ->join('pendaftaran.kunjungan as k', 'tp.PENDAFTARAN', '=', 'k.NOPEN')
             ->join('pendaftaran.penjamin as pj', 'k.NOPEN', '=', 'pj.NOPEN')
             ->join('master.referensi as ref_asuransi', function ($join) {
@@ -95,8 +95,8 @@ class KasirController extends Controller
             ->where('r.JENIS_KUNJUNGAN', $jenis_kasir)
             ->where('t.REF', $norm)
             ->where('t.STATUS', 2)
-            ->where('tp.STATUS', 1)     // opsional
-            ->where('tp.UTAMA', 1)      // opsional (jika hanya tagihan utama)
+            ->where('tp.STATUS', 1)
+            ->where('tp.UTAMA', 1)
             ->select(
                 't.ID as no_tagihan',
                 't.TOTAL as total_tagihan_kotor',
@@ -106,6 +106,7 @@ class KasirController extends Controller
                 DB::raw("CONCAT_WS(' ', p.GELAR_DEPAN, p.NAMA, p.GELAR_BELAKANG) as nama_dokter")
             )
             ->orderBy('t.TANGGAL', 'desc');
+
 
 
         $lunasIds = $processedTags->where('status_kasir', 'lunas')->pluck('simgos_tagihan_id');
