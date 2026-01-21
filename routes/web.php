@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\LaporanJasaController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\KasirController;
@@ -125,13 +126,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/laporan/penerimaan', [LaporanController::class, 'indexPenerimaan'])
         ->name('laporan.penerimaan.index');
 
-    // Halaman detail/cetak laporan (yang sudah kita rancang mockup-nya)
-    Route::get('/laporan/sesi/{id}', [LaporanController::class, 'showLaporanSesi'])
+        // Halaman detail/cetak laporan (yang sudah kita rancang mockup-nya)
+        Route::get('/laporan/sesi/{id}', [LaporanController::class, 'showLaporanSesi'])
         ->name('laporan.sesi.show');
 
-    Route::get('/laporan/sesi/{id}/cetak', [LaporanController::class, 'cetakLaporanSesi'])
+        Route::get('/laporan/sesi/{id}/cetak', [LaporanController::class, 'cetakLaporanSesi'])
         ->name('laporan.sesi.cetak')
         ->middleware('auth');
+
+        Route::get('/laporan/jasa', [LaporanJasaController::class, 'indexJasa'])
+            ->name('laporan.jasa');
 });
 
 // Route batal tagihan

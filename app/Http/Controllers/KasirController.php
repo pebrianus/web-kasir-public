@@ -82,19 +82,31 @@ class KasirController extends Controller
         // 2. Ambil daftar tagihan (masih harga brutto)
         $daftarTagihanQuery = DB::connection('simgos_pembayaran')
             ->table('tagihan as t')
-            ->join('pendaftaran.kunjungan as k', 't.ID', '=', 'k.NOPEN')
-            ->join('pendaftaran.penjamin as pj', 't.ID', '=', 'pj.NOPEN')
+            ->join('simgos_pembayaran.tagihan_pendaftaran as tp', 'tp.TAGIHAN', '=', 't.ID')
+            ->join('pendaftaran.kunjungan as k', 'tp.PENDAFTARAN', '=', 'k.NOPEN')
+            ->join('pendaftaran.penjamin as pj', 'k.NOPEN', '=', 'pj.NOPEN')
             ->join('master.referensi as ref_asuransi', function ($join) {
-                $join->on('pj.JENIS', '=', 'ref_asuransi.ID')->where('ref_asuransi.JENIS', 10);
+                $join->on('pj.JENIS', '=', 'ref_asuransi.ID')
+                    ->where('ref_asuransi.JENIS', 10);
             })
             ->join('master.ruangan as r', 'k.RUANGAN', '=', 'r.ID')
-            ->where('r.JENIS_KUNJUNGAN', $jenis_kasir)
             ->join('master.dokter as d', 'k.DPJP', '=', 'd.ID')
             ->join('master.pegawai as p', 'd.NIP', '=', 'p.NIP')
+            ->where('r.JENIS_KUNJUNGAN', $jenis_kasir)
             ->where('t.REF', $norm)
             ->where('t.STATUS', 2)
-            ->select('t.ID as no_tagihan', 't.TOTAL as total_tagihan_kotor', 't.TANGGAL as tgl_tagihan', 'r.DESKRIPSI as nama_ruangan', 'ref_asuransi.DESKRIPSI as nama_asuransi', DB::raw("CONCAT_WS(' ', p.GELAR_DEPAN, p.NAMA, p.GELAR_BELAKANG) as nama_dokter"))
+            ->where('tp.STATUS', 1)     // opsional
+            ->where('tp.UTAMA', 1)      // opsional (jika hanya tagihan utama)
+            ->select(
+                't.ID as no_tagihan',
+                't.TOTAL as total_tagihan_kotor',
+                't.TANGGAL as tgl_tagihan',
+                'r.DESKRIPSI as nama_ruangan',
+                'ref_asuransi.DESKRIPSI as nama_asuransi',
+                DB::raw("CONCAT_WS(' ', p.GELAR_DEPAN, p.NAMA, p.GELAR_BELAKANG) as nama_dokter")
+            )
             ->orderBy('t.TANGGAL', 'desc');
+
 
         $lunasIds = $processedTags->where('status_kasir', 'lunas')->pluck('simgos_tagihan_id');
         if ($statusFilter == 'proses') {
@@ -446,8 +458,8 @@ class KasirController extends Controller
                 ->with(
                     'error',
                     'Sesi kasir untuk jenis kasir ' .
-                        $jenisKasir .
-                        ' belum dibuka!
+                    $jenisKasir .
+                    ' belum dibuka!
              Silakan buka sesi kasir sesuai role Anda.',
                 );
         }
