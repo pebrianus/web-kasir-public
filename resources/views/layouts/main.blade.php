@@ -136,13 +136,12 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
                             </a>
                         </div>
 
-                        <!-- <div>
+                        <div>
                             <h6 class="collapse-header">Laporan Jasa</h6>
-                            <a class="collapse-item"
-                                href="{{ route('laporan.jasa', ['jenis' => auth()->user()->role_id]) }}">
+                            <a class="collapse-item" href="{{ route('laporan.jasa.index') }}">
                                 Laporan Jasa
                             </a>
-                        </div> -->
+                        </div>
                     </div>
                 </div>
             </li>
@@ -185,9 +184,9 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
 
                                     {{-- Form untuk "Tutup Kasir" --}}
                                     <a class="dropdown-item" href="{{ route('kasir.sesi.tutup') }}" onclick="event.preventDefault();
-                                                        if(confirm('Anda yakin ingin menutup sesi kasir saat ini?')) {
-                                                            document.getElementById('tutup-kasir-form').submit();
-                                                        }">
+                                                            if(confirm('Anda yakin ingin menutup sesi kasir saat ini?')) {
+                                                                document.getElementById('tutup-kasir-form').submit();
+                                                            }">
                                         <i class="fas fa-door-closed fa-sm fa-fw mr-2 text-gray-400"></i>
                                         Tutup Kasir
                                     </a>

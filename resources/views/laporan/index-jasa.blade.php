@@ -1,29 +1,8 @@
 @extends('layouts.main') {{-- <-- BERUBAH KE INDUK LAPORAN --}} @section('title', 'Laporan Penerimaan Kasir') {{--
     Konten ini akan dimasukkan ke @yield('laporan_content') --}} @section('content') @php
-            $jenis = [
-                1 => 'Rawat Jalan',
-                2 => 'IGD',
-                3 => 'Rawat Inap',
-                4 => 'Lab',
-                5 => 'Radiologi',
-            ];
 
-            // Placeholder data
-            $asuransiList = [
-                'umum' => 'Umum',
-                'bpjs' => 'BPJS',
-                'prudential' => 'Prudential',
-                'allianz' => 'Allianz'
-            ];
 
-            $tenagaMedis = [
-                'dr_andi' => 'Dr. Andi',
-                'dr_budi' => 'Dr. Budi',
-                'nurse_siti' => 'Perawat Siti',
-                'nurse_rina' => 'Perawat Rina'
-            ];
-        @endphp <div
-        class="card shadow mb-4">
+        @endphp <div class="card shadow mb-4">
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">Filter Laporan Jasa Radiologi
             </h6>
@@ -31,8 +10,7 @@
         <div class="card-body">
 
             {{-- Form Filter Tanggal --}}
-            <form method="GET" action="{{ route('laporan.penerimaan.index') }}">
-                <input type="hidden" name="jenis" value="{{ $jenis_kasir }}">
+            <form method="GET" action="{{ route('laporan.jasa.index') }}">
 
                 <div class="row align-items-end">
 
@@ -53,10 +31,13 @@
                     <div class="col-md-3">
                         <label class="small">Asuransi</label>
                         <select class="form-control" name="asuransi">
-                            <option value="">-- Semua Asuransi --</option>
-                            @foreach ($asuransiList as $key => $value)
-                                <option value="{{ $key }}" {{ request('asuransi') == $key ? 'selected' : '' }}>
-                                    {{ $value }}
+                            <option value="0" {{ request('asuransi') == '0' ? 'selected' : '' }}>
+                                -- Semua Asuransi --
+                            </option>
+
+                            @foreach ($asuransiList as $asuransi)
+                                <option value="{{ $asuransi->ID }}" {{ request('asuransi') == $asuransi->ID ? 'selected' : '' }}>
+                                    {{ $asuransi->DESKRIPSI }}
                                 </option>
                             @endforeach
                         </select>
@@ -65,11 +46,12 @@
                     {{-- Dokter / Perawat --}}
                     <div class="col-md-3">
                         <label class="small">Dokter / Perawat</label>
-                        <select class="form-control" name="tenaga_medis">
-                            <option value="">-- Semua --</option>
-                            @foreach ($tenagaMedis as $key => $value)
-                                <option value="{{ $key }}" {{ request('tenaga_medis') == $key ? 'selected' : '' }}>
-                                    {{ $value }}
+                        <select name="petugas" class="form-control">
+                            <option value="0">-- Semua Petugas --</option>
+
+                            @foreach ($petugasList as $petugas)
+                                <option value="{{ $petugas->NIP }}" {{ request('petugas') == $petugas->NIP ? 'selected' : '' }}>
+                                    {{ $petugas->nama_petugas }}
                                 </option>
                             @endforeach
                         </select>
@@ -77,14 +59,27 @@
 
                     {{-- Tombol --}}
                     <div class="col-md-12 mt-3">
-                        <button type="submit" class="btn btn-primary btn-sm">
-                            <i class="fas fa-search fa-sm"></i> Cari
-                        </button>
-                        <a href="{{ route('laporan.penerimaan.index', ['jenis' => $jenis_kasir]) }}"
-                            class="btn btn-secondary btn-sm">
-                            Reset
-                        </a>
+                        <div class="d-flex justify-content-between align-items-center">
+                            {{-- KIRI: Cari & Reset --}}
+                            <div>
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-search fa-sm me-1"></i> Cari
+                                </button>
+
+                                <a href="{{ route('laporan.jasa.cetak') }}" class="btn btn-secondary btn-sm ms-1">
+                                    <i class="fas fa-undo fa-sm me-1"></i> Reset
+                                </a>
+                            </div>
+
+                            {{-- KANAN: Cetak --}}
+                            <div>
+                                <a href="{{ route('laporan.jasa.cetak') }}" target="blank" class="btn btn-success btn-sm">
+                                    <i class="fas fa-print fa-sm me-1"></i> Cetak
+                                </a>
+                            </div>
+                        </div>
                     </div>
+
 
                 </div>
             </form>
@@ -147,16 +142,6 @@
                             </td>
                         </tr>
 
-                        {{-- Diskon --}}
-                        <tr>
-                            <td colspan="5" class="text-right">
-                                Jumlah Diskon PEBRI DOKTER IGD
-                            </td>
-                            <td class="text-right">
-                                0
-                            </td>
-                        </tr>
-
                         {{-- Total Bersih --}}
                         <tr class="bg-light">
                             <td colspan="5" class="text-right font-weight-bold">
@@ -169,12 +154,6 @@
                     </tbody>
 
                 </table>
-            </div>
-
-
-            {{-- Link Paginasi --}}
-            <div class="d-flex justify-content-center">
-                {{ $daftarSesi->appends(request()->query())->links() }}
             </div>
 
         </div>
