@@ -1,7 +1,6 @@
 @extends('layouts.main') {{-- <-- BERUBAH KE INDUK LAPORAN --}} @section('title', 'Laporan Penerimaan Kasir') {{--
     Konten ini akan dimasukkan ke @yield('laporan_content') --}} @section('content') @php
-
-
+            $namaDokter = count($data) ? collect($data)->first()->PETUGASMEDIS : null;
         @endphp <div class="card shadow mb-4">
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">Filter Laporan Jasa Radiologi
@@ -10,52 +9,70 @@
         <div class="card-body">
 
             {{-- Form Filter Tanggal --}}
-            <form method="GET" action="{{ route('laporan.jasa.index') }}">
-
+            <form method="POST" action="{{ route('laporan.jasa.filter') }}">
+                @csrf
                 <div class="row align-items-end">
 
                     {{-- Tanggal Dari --}}
                     <div class="col-md-3">
                         <label class="small">Tanggal Dari</label>
-                        <input type="date" class="form-control" name="tanggal_dari" value="{{ request('tanggal_dari') }}">
+                        <input type="date" class="form-control" name="tanggal_dari" value="{{ session('laporan_jasa_filter.tanggal_dari') }}">
                     </div>
 
                     {{-- Tanggal Sampai --}}
                     <div class="col-md-3">
                         <label class="small">Tanggal Sampai</label>
                         <input type="date" class="form-control" name="tanggal_sampai"
-                            value="{{ request('tanggal_sampai') }}">
+                            value="{{ session('laporan_jasa_filter.tanggal_sampai') }}">
                     </div>
 
                     {{-- Asuransi --}}
-                    <div class="col-md-3">
-                        <label class="small">Asuransi</label>
-                        <select class="form-control" name="asuransi">
-                            <option value="0" {{ request('asuransi') == '0' ? 'selected' : '' }}>
-                                -- Semua Asuransi --
-                            </option>
+<div class="col-md-3">
+    <label class="small">Asuransi</label>
 
-                            @foreach ($asuransiList as $asuransi)
-                                <option value="{{ $asuransi->ID }}" {{ request('asuransi') == $asuransi->ID ? 'selected' : '' }}>
-                                    {{ $asuransi->DESKRIPSI }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
+    <select class="form-control" name="asuransi">
+        <option value="Semua"
+            {{ session('laporan_jasa_filter.asuransi', 'Semua') == 'Semua' ? 'selected' : '' }}>
+            -- Semua Asuransi --
+        </option>
+
+        @foreach ($asuransiList as $asuransi)
+            <option
+                value="{{ $asuransi->DESKRIPSI }}"
+                {{ session('laporan_jasa_filter.asuransi') == $asuransi->DESKRIPSI ? 'selected' : '' }}>
+                {{ $asuransi->DESKRIPSI }}
+            </option>
+        @endforeach
+    </select>
+</div>
+
 
                     {{-- Dokter / Perawat --}}
-                    <div class="col-md-3">
-                        <label class="small">Dokter / Perawat</label>
-                        <select name="petugas" class="form-control">
-                            <option value="0">-- Semua Petugas --</option>
+<div class="col-md-3">
 
-                            @foreach ($petugasList as $petugas)
-                                <option value="{{ $petugas->NIP }}" {{ request('petugas') == $petugas->NIP ? 'selected' : '' }}>
-                                    {{ $petugas->nama_petugas }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
+
+<select name="petugas" id="petugas" class="form-control">
+    <option value="0">-- Semua Petugas --</option>
+
+    @foreach ($petugasList as $petugas)
+        <option
+            value="{{ $petugas->ID_PETUGAS }}"
+            data-jenis="{{ $petugas->JENIS }}"
+            {{ session('laporan_jasa_filter.petugas') == $petugas->ID_PETUGAS ? 'selected' : '' }}
+        >
+            {{ $petugas->nama_petugas }}
+        </option>
+    @endforeach
+</select>
+
+<input type="hidden"
+       name="jenis_petugas"
+       id="jenis_petugas"
+       value="{{ session('laporan_jasa_filter.jenis_petugas') }}">
+
+</div>
+
+
 
                     {{-- Tombol --}}
                     <div class="col-md-12 mt-3">
@@ -102,61 +119,89 @@
                     </thead>
 
                     <tbody>
-                        {{-- Data Pasien --}}
-                        <tr>
-                            <td class="text-center">1</td>
-                            <td>00-35-93-23</td>
-                            <td>BUDIANSYAH</td>
-                            <td class="text-center">29-12-2025</td>
-                            <td>Tanpa Asuransi / 1</td>
-                            <td class="text-right">120.000</td>
-                        </tr>
+                        @php
+                            $no = 1;
+                            $grandTotal = 0;
+                        @endphp
 
-                        {{-- Detail Tindakan --}}
-                        <tr>
-                            <td colspan="5">
-                                Pemeriksaan Dokter IGD
-                            </td>
-                            <td class="text-right">
-                                120.000
-                            </td>
-                        </tr>
+                        @forelse (collect($data)->groupBy('NOPEN') as $nopen => $items)
+                            @php
+                                $pasien = $items->first();
+                            @endphp
 
-                        {{-- Subtotal --}}
-                        <tr>
-                            <td colspan="5" class="text-right font-weight-bold">
-                                Jumlah IGD
-                            </td>
-                            <td class="text-right font-weight-bold">
-                                120.000
-                            </td>
-                        </tr>
+                            {{-- BARIS PASIEN --}}
+                            <tr>
+                                <td class="text-center">{{ $no++ }}</td>
+                                <td>{{ $pasien->NORM }}</td>
+                                <td>{{ $pasien->NAMAPASIEN }}</td>
+                                <td class="text-center">{{ $pasien->TANGGALREGISTRASI }}</td>
+                                <td>{{ $pasien->CARABAYAR }}</td>
+                                <td class="text-right">
+                                    {{ number_format($items->sum(fn($i) => (int) $i->DOKTER_OPERATOR * (int) $i->JUMLAH), 0, ',', '.') }}
+                                </td>
+                            </tr>
 
-                        {{-- Total Sebelum Diskon --}}
-                        <tr>
-                            <td colspan="5" class="text-right">
-                                Total Jasa Sebelum Diskon PEBRI DOKTER IGD
-                            </td>
-                            <td class="text-right">
-                                120.000
-                            </td>
-                        </tr>
+                            {{-- DETAIL TINDAKAN --}}
+                            @foreach ($items as $detail)
+                                @php
+                                    $subtotal = (int) $detail->DOKTER_OPERATOR * (int) $detail->JUMLAH;
+                                    $grandTotal += $subtotal;
+                                @endphp
+                                <tr>
+                                    <td colspan="5">
+                                        {{ $detail->NAMATINDAKAN }}
+                                    </td>
+                                    <td class="text-right">
+                                        {{ number_format($subtotal, 0, ',', '.') }}
+                                    </td>
+                                </tr>
+                            @endforeach
 
-                        {{-- Total Bersih --}}
-                        <tr class="bg-light">
-                            <td colspan="5" class="text-right font-weight-bold">
-                                Total Jasa Bersih PEBRI DOKTER IGD
-                            </td>
-                            <td class="text-right font-weight-bold">
-                                120.000
-                            </td>
-                        </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="text-center">
+                                    Data tidak ditemukan
+                                </td>
+                            </tr>
+                        @endforelse
                     </tbody>
+
+                    {{-- GRAND TOTAL --}}
+                    @if (count($data) > 0)
+                        <tfoot>
+                            <tr class="bg-light">
+                                <td colspan="5" class="text-right font-weight-bold">
+                                    TOTAL JASA BERSIH {{$namaDokter}}
+                                </td>
+                                <td class="text-right font-weight-bold">
+                                    {{ number_format($grandTotal, 0, ',', '.') }}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    @endif
+
+
 
                 </table>
             </div>
 
         </div>
         </div>
+
+        <script>
+            function setJenisPetugas() {
+                let select = document.getElementById('petugas');
+                let selected = select.options[select.selectedIndex];
+                document.getElementById('jenis_petugas').value = selected.dataset.jenis || '';
+            }
+
+            // saat dropdown berubah
+            document.getElementById('petugas').addEventListener('change', setJenisPetugas);
+
+            // saat halaman pertama kali load
+            document.addEventListener('DOMContentLoaded', setJenisPetugas);
+        </script>
+
+
 
     @endsection

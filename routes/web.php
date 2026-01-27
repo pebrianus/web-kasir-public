@@ -137,6 +137,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/laporan/jasa', [LaporanJasaController::class, 'indexJasa'])
         ->name('laporan.jasa.index');
 
+    Route::post('/laporan/jasa', [LaporanJasaController::class, 'indexJasa'])
+        ->name('laporan.jasa.filter');
+
+
     Route::get('/laporan/jasa/cetak', [LaporanJasaController::class, 'cetakLaporanJasa'])
         ->name('laporan.jasa.cetak');
 });

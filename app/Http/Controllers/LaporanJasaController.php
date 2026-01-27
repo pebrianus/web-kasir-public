@@ -4,9 +4,15 @@ namespace App\Http\Controllers;
 
 // use App\Models\KasirPembayaran;
 use App\Models\KasirSesi;
+use App\Models\KasirTagihanHead;
+use App\Models\Kunjungan;
 use App\Models\Pegawai;
+use App\Models\PetugasTindakanMedis;
 use App\Models\Referensi;
 // use Barryvdh\DomPDF\PDF;
+use App\Models\Tagihan;
+use App\Models\TagihanPendaftaran;
+use App\Models\TindakanMedis;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -15,168 +21,175 @@ use Illuminate\Http\Request;
 
 class LaporanJasaController extends Controller
 {
-
-public function indexJasa(Request $request)
-{
-    // =========================
-    // PARAM UMUM (punyamu)
-    // =========================
-    $jenis_kasir  = $request->input('jenis');
-    $tanggalInput = $request->input('tanggal');
-
-    $query = KasirSesi::where('status', 'TUTUP')
-        ->orderBy('waktu_tutup', 'desc');
-
-    if ($tanggalInput) {
-        $query->whereDate('waktu_buka', Carbon::parse($tanggalInput));
-    } else {
-        $query->whereDate('waktu_buka', Carbon::today());
-        $tanggalInput = Carbon::today()->format('Y-m-d');
-    }
-
-    // =========================
-    // LIST FILTER (punyamu)
-    // =========================
-    $asuransiList = Referensi::select('ID', 'DESKRIPSI')
-        ->where('JENIS', 10)
-        ->where('STATUS', 1)
-        ->orderBy('DESKRIPSI')
-        ->get();
-
-    $petugasList = Pegawai::select(
-        'NIP',
-        Pegawai::selectNamaLengkap('nama_petugas')
-    )
-        ->where('STATUS', 1)
-        ->where(function ($q) {
-            $q->where('SMF', 27)
-              ->orWhere('PROFESI', 8);
-        })
-        ->orderBy('nama_petugas')
-        ->get();
-
-    // =========================
-    // DEFAULT VIEW DATA
-    // =========================
-    $data = [];
-
-    // =========================
-    // JIKA ADA REQUEST SEARCH
-    // =========================
-    if ($request->has('tanggal_dari')) {
-
-        $tanggalDari   = $request->tanggal_dari;
-        $tanggalSampai = $request->tanggal_sampai;
-
-        $asuransi = $request->asuransi ?? 0;
-        $petugas  = $request->petugas ?? 0;
-
-        // sementara hardcode / nanti dari form
-        $ruanganInput = $request->ruangan ?? null;
-
-        // =========================
-        // LOGIC RUANGAN
-        // =========================
-        $ruangan = 0;
-
-        if (!empty($ruanganInput)) {
-            if (is_numeric($ruanganInput)) {
-                $ruangan = $ruanganInput;
-            } else {
-                $ruang = DB::table('master.ruangan')
-                    ->where('DESKRIPSI', 'LIKE', '%' . $ruanganInput . '%')
-                    ->first();
-
-                $ruangan = $ruang ? $ruang->ID : 0;
-            }
-        }
-
-        $tglAwal  = $tanggalDari . ' 00:00:00';
-        $tglAkhir = $tanggalSampai . ' 23:59:59';
-
-        // =========================
-        // CALL STORED PROCEDURE
-        // =========================
-        $data = DB::select(
-            'CALL laporan.LaporanJasaDokterPerPasien(?, ?, ?, ?, ?)',
-            [$tglAwal, $tglAkhir, $ruangan, $asuransi, $petugas]
-        );
-
-        // DEBUG kalau perlu
-        dd($data);
-    }
-
-    // =========================
-    // RETURN VIEW
-    // =========================
-    return view('laporan.index-jasa', [
-        'jenis_kasir'   => $jenis_kasir,
-        'tanggalInput'  => $tanggalInput,
-        'asuransiList'  => $asuransiList,
-        'petugasList'   => $petugasList,
-        'data'          => $data,
-    ]);
-}
-
-
-
-    public function cariLaporanJasa(Request $request)
+    public function indexJasa(Request $request)
     {
-        $tanggalDari = $request->tanggal_dari;
-        $tanggalSampai = $request->tanggal_sampai;
-        // Pake Placeholder dulu
-        // $asuransi = $request->asuransi ?? 0;
-        $asuransi = 0;
-        // $petugas = $request->petugas ?? 0;
-        $petugas = 313;
-        // $ruanganInput = $request->ruangan ?? 0;
-        $ruanganInput = "RADIOLOGI";
 
-        /**
-         * RULE RUANGAN:
-         * - angka (101030106) → dipakai langsung
-         * - teks ("RADIOLOGI") → cari ID ruangan
-         * - kosong → 0 (semua)
-         */
-        $ruangan = 0;
+        if ($request->isMethod('post')) {
+            session([
+                'laporan_jasa_filter' => $request->only([
+                    'tanggal_dari',
+                    'tanggal_sampai',
+                    'asuransi',
+                    'petugas',
+                    'jenis_petugas',
+                ])
+            ]);
 
-        if (!empty($ruanganInput)) {
-            if (is_numeric($ruanganInput)) {
-                // contoh: 101030106
-                $ruangan = $ruanganInput;
-            } else {
-                // contoh: "RADIOLOGI"
-                $ruang = DB::table('master.ruangan')
-                    ->where('DESKRIPSI', 'LIKE', '%' . $ruanganInput . '%')
-                    ->first();
-
-                $ruangan = $ruang ? $ruang->ID : 0;
-            }
+            return redirect()->route('laporan.jasa.index');
         }
 
-        // Pastikan format datetime
-        $tglAwal = $tanggalDari . ' 00:00:00';
-        $tglAkhir = $tanggalSampai . ' 23:59:59';
+        $filter = session('laporan_jasa_filter', []);
 
-        // Panggil Stored Procedure
-        $data = DB::select(
-            'CALL laporan.LaporanJasaDokterPerPasien(?, ?, ?, ?, ?)',
-            [
-                $tglAwal,
-                $tglAkhir,
-                $ruangan,
-                $asuransi,
-                $petugas
-            ]
-        );
-        dd($data);
+        $tanggalDari = $filter['tanggal_dari'] ?? null;
+        $tanggalSampai = $filter['tanggal_sampai'] ?? null;
+        $asuransi = $filter['asuransi'] ?? null;
+        $petugas = $filter['petugas'] ?? null;
+        $jenisPetugas = $filter['jenis_petugas'] ?? null;
+
+
+        // dd($jenisPetugas);
+
+        // dd($asuransi);
+
+        // =========================
+        // QUERY TAGIHAN LUNAS
+        // =========================
+
+        $queryTagihan = KasirTagihanHead::select(
+            'simgos_tagihan_id',
+            'simgos_norm',
+            'nama_pasien',
+            'nama_asuransi'
+        )
+            ->where('status_kasir', 'lunas')
+            ->when($asuransi && $asuransi !== 'Semua', function ($q) use ($asuransi) {
+                $q->where('nama_asuransi', 'LIKE', "%{$asuransi}%");
+            });
+
+
+        /* FILTER TANGGAL */
+        if ($tanggalDari && $tanggalSampai) {
+            $queryTagihan->whereBetween('simgos_tanggal_tagihan', [
+                Carbon::parse($tanggalDari)->startOfDay(),
+                Carbon::parse($tanggalSampai)->endOfDay(),
+            ]);
+        } else {
+            $queryTagihan->whereDate('simgos_tanggal_tagihan', Carbon::today());
+        }
+
+        $tagihanHead = $queryTagihan->get();
+
+        $data = $queryTagihan->pluck('simgos_tagihan_id');
+
+        $tagihanRadiologi = Tagihan::whereIn('ID', $data)
+            ->where('RADIOLOGI', '>', 0)
+            ->pluck('ID');
+
+        $pendaftaranIds = TagihanPendaftaran::whereIn('TAGIHAN', $tagihanRadiologi)
+            ->pluck('PENDAFTARAN');
+
+        $kunjunganIds = Kunjungan::whereIn('NOPEN', $pendaftaranIds)
+            ->where('RUANGAN', '101030106')
+            ->pluck('NOMOR');
+
+        // dd($kunjunganIds->toArray());
+
+        $tindakanIds = TindakanMedis::whereIn('KUNJUNGAN', $kunjunganIds)
+            ->pluck('ID', 'TINDAKAN');
+
+        // dd($tindakanIds->toArray());
+
+        $tindakan = TindakanMedis::join(
+            DB::raw('master.tindakan as t'),
+            't.ID',
+            '=',
+            'tindakan_medis.TINDAKAN'
+        )
+            ->whereIn('tindakan_medis.KUNJUNGAN', $kunjunganIds)
+            ->select([
+                'tindakan_medis.TINDAKAN',
+                't.NAMA as NAMA_TINDAKAN',
+                'tindakan_medis.TANGGAL',
+            ])
+            ->get();
+
+        // dd($tindakan->toArray());
+
+        $petugas = $filter['petugas'] ?? null;
+
+        $petugasTindakan = PetugasTindakanMedis::whereIn('TINDAKAN_MEDIS', $tindakanIds)
+            ->where('STATUS', 1)
+
+            // filter jenis petugas (kalau tidak null & bukan 0)
+            ->when(!is_null($jenisPetugas) && $jenisPetugas != 0, function ($q) use ($jenisPetugas) {
+                $q->where('JENIS', $jenisPetugas);
+            })
+
+            // filter petugas (kalau tidak null & bukan 0)
+            ->when(!is_null($petugas) && $petugas != 0, function ($q) use ($petugas) {
+                $q->where('MEDIS', $petugas);
+            })
+
+            ->pluck('MEDIS', 'TINDAKAN_MEDIS');
+
+
+        // dd($petugasTindakan->toArray());
+
+        // dd($tagihanRadiologi);
+
+        // =========================
+        // LIST FILTER (punyamu)
+        // =========================
+        $asuransiList = Referensi::select('ID', 'DESKRIPSI')
+            ->where('JENIS', 10)
+            ->where('STATUS', 1)
+            ->orderBy('ID')
+            ->get();
+
+
+        $petugasList = Pegawai::select(
+            DB::raw("
+        CASE
+            WHEN pegawai.PROFESI = 8 THEN perawat.ID
+            WHEN pegawai.SMF = 27 THEN dokter.ID
+            ELSE NULL
+        END AS ID_PETUGAS
+    "),
+            Pegawai::selectNamaLengkap('nama_petugas'),
+            DB::raw("
+        CASE
+            WHEN pegawai.PROFESI = 8 THEN 3
+            WHEN pegawai.SMF = 27 THEN 1
+            ELSE NULL
+        END AS JENIS
+    ")
+        )
+            ->leftJoin('perawat', function ($join) {
+                $join->on('perawat.NIP', '=', 'pegawai.NIP')
+                    ->where('perawat.STATUS', 1);
+            })
+            ->leftJoin('dokter', function ($join) {
+                $join->on('dokter.NIP', '=', 'pegawai.NIP')
+                    ->where('dokter.STATUS', 1);
+            })
+            ->where('pegawai.STATUS', 1)
+            ->where(function ($q) {
+                $q->where('pegawai.SMF', 27)
+                    ->orWhere('pegawai.PROFESI', 8);
+            })
+            ->orderBy('nama_petugas')
+            ->get();
+
+
+
+        // dd($petugasList->toArray());
+
         return view('laporan.index-jasa', [
-            'data' => $data,
-            'tanggalDari' => $tanggalDari,
-            'tanggalSampai' => $tanggalSampai,
-            'ruangan' => $ruanganInput,
-            'asuransi' => $asuransi,
-            'petugas' => $petugas,
+
+            // 'tanggalInput' => $tanggalInput,
+            'asuransiList' => $asuransiList,
+            'petugasList' => $petugasList,
+            'data' => [],
         ]);
     }
 
