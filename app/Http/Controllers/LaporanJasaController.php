@@ -30,7 +30,6 @@ class LaporanJasaController extends Controller
             ->get();
 
         return $asuransiList;
-
     }
 
     public function getPetugasList()
@@ -93,11 +92,11 @@ class LaporanJasaController extends Controller
 
         $filter = session('laporan_jasa_filter', []);
 
-        $tanggalDari = $filter['tanggal_dari'] ?? null;
-        $tanggalSampai = $filter['tanggal_sampai'] ?? null;
-        $asuransi = $filter['asuransi'] ?? null;
-        $petugasFilter = $filter['petugas'] ?? null;
-        $jenisPetugas = $filter['jenis_petugas'] ?? null;
+        $tanggalDari = isset($filter['tanggal_dari']) ? $filter['tanggal_dari'] : null;
+        $tanggalSampai = isset($filter['tanggal_sampai']) ? $filter['tanggal_sampai'] : null;
+        $asuransi = isset($filter['asuransi']) ? $filter['asuransi'] : null;
+        $petugasFilter = isset($filter['petugas']) ? $filter['petugas'] : null;
+        $jenisPetugas = isset($filter['jenis_petugas']) ? $filter['jenis_petugas'] : null;
 
         /* =========================
          * 1. TAGIHAN KASIR (LUNAS)
@@ -108,10 +107,11 @@ class LaporanJasaController extends Controller
             'nama_pasien',
             'nama_asuransi'
         )
-            ->where('status_kasir', 'lunas')
-            ->when($asuransi && $asuransi !== 'Semua', function ($q) use ($asuransi) {
-                $q->where('nama_asuransi', 'LIKE', "%{$asuransi}%");
-            });
+            ->where('status_kasir', 'lunas');
+
+        if ($asuransi && $asuransi !== 'Semua') {
+            $queryTagihan->where('nama_asuransi', 'LIKE', '%' . $asuransi . '%');
+        }
 
         if ($tanggalDari && $tanggalSampai) {
             $queryTagihan->whereBetween('simgos_tanggal_tagihan', [
@@ -135,6 +135,8 @@ class LaporanJasaController extends Controller
             ]);
         }
 
+        // dd($tagihanHead->toArray());
+
         /* =========================
          * 2. TAGIHAN RADIOLOGI
          * ========================= */
@@ -144,6 +146,8 @@ class LaporanJasaController extends Controller
         )
             ->where('RADIOLOGI', '>', 0)
             ->pluck('ID');
+
+        // dd($tagihanRadiologiIds);
 
         if ($tagihanRadiologiIds->isEmpty()) {
             return view('laporan.index-jasa', [
@@ -162,9 +166,20 @@ class LaporanJasaController extends Controller
         )
             ->pluck('PENDAFTARAN');
 
-        $kunjungan = Kunjungan::whereIn('NOPEN', $pendaftaranIds)
-            ->where('RUANGAN', '101030106') // RADIOLOGI
+        $pendaftaran = TagihanPendaftaran::whereIn(
+            'TAGIHAN',
+            $tagihanRadiologiIds
+        )
+            ->get(['TAGIHAN', 'PENDAFTARAN']);
+
+
+        $kunjungan = Kunjungan::whereIn(
+            'NOPEN',
+            $pendaftaran->pluck('PENDAFTARAN')
+        )
+            ->where('RUANGAN', '101030106')
             ->get(['NOMOR', 'NOPEN']);
+
 
         $kunjunganIds = $kunjungan->pluck('NOMOR');
 
@@ -202,12 +217,13 @@ class LaporanJasaController extends Controller
                 'tindakan_medis.TINDAKAN',
                 't.NAMA as NAMA_TINDAKAN',
                 'tindakan_medis.TANGGAL',
-
                 'tt.DOKTER_OPERATOR',
                 'tt.PARAMEDIS',
                 'tt.TARIF',
             ])
             ->get();
+
+        // dd($tindakan->toArray());
 
         /* =========================
          * 6. PETUGAS PER TINDAKAN
@@ -222,17 +238,17 @@ class LaporanJasaController extends Controller
                 'TINDAKAN_MEDIS',
                 $tindakan->pluck('TINDAKAN_MEDIS_ID')
             )
-            ->where('petugas_tindakan_medis.STATUS', 1)
-            ->when(
-                $jenisPetugas,
-                fn($q) =>
-                $q->where('petugas_tindakan_medis.JENIS', $jenisPetugas)
-            )
-            ->when(
-                $petugasFilter,
-                fn($q) =>
-                $q->where('petugas_tindakan_medis.MEDIS', $petugasFilter)
-            )
+            ->where('petugas_tindakan_medis.STATUS', 1);
+
+        if ($jenisPetugas) {
+            $petugasTindakan->where('petugas_tindakan_medis.JENIS', $jenisPetugas);
+        }
+
+        if ($petugasFilter) {
+            $petugasTindakan->where('petugas_tindakan_medis.MEDIS', $petugasFilter);
+        }
+
+        $petugasTindakan = $petugasTindakan
             ->select([
                 'petugas_tindakan_medis.TINDAKAN_MEDIS',
                 'petugas_tindakan_medis.MEDIS',
@@ -242,39 +258,58 @@ class LaporanJasaController extends Controller
             ->get()
             ->groupBy('TINDAKAN_MEDIS');
 
-            // dd($petugasTindakan);
+        // dd($petugasTindakan->toArray());
 
         /* =========================
          * 7. RAKIT LAPORAN (FINAL)
          * ========================= */
-        $laporan = $tagihanHead->map(function ($tagihan) use ($kunjungan, $tindakan, $petugasTindakan, $jenisPetugas) {
+        $laporan = $tagihanHead->map(function ($tagihan) use ($pendaftaran, $kunjungan, $tindakan, $petugasTindakan, $jenisPetugas) {
 
+            // ambil NOPEN dari TAGIHAN
+            $nopenPasien = $pendaftaran
+                ->where('TAGIHAN', $tagihan->simgos_tagihan_id)
+                ->pluck('PENDAFTARAN');
+
+            // ambil NOMOR kunjungan
             $kunjunganPasien = $kunjungan
-                ->where('NOPEN', $tagihan->simgos_norm)
+                ->whereIn('NOPEN', $nopenPasien)
                 ->pluck('NOMOR');
 
+            // ambil tindakan
             $tindakanPasien = $tindakan
                 ->whereIn('KUNJUNGAN', $kunjunganPasien);
 
             $detailTindakan = $tindakanPasien->map(function ($tdk) use ($petugasTindakan, $jenisPetugas) {
 
-                $petugas = $petugasTindakan[$tdk->TINDAKAN_MEDIS_ID] ?? collect();
+                $petugas = isset($petugasTindakan[$tdk->TINDAKAN_MEDIS_ID])
+                    ? $petugasTindakan[$tdk->TINDAKAN_MEDIS_ID]
+                    : collect();
 
-                $feePetugas = match ($jenisPetugas) {
-                    1 => $tdk->DOKTER_OPERATOR,
-                    3 => $tdk->PARAMEDIS,
-                    default => 0,
-                };
+                $feePetugas = 0;
+
+                // jika filter petugas dipilih
+                if ($jenisPetugas == 1) {
+                    $feePetugas = (int) $tdk->DOKTER_OPERATOR;
+                } elseif ($jenisPetugas == 3) {
+                    $feePetugas = (int) $tdk->PARAMEDIS;
+                }
+                // jika TIDAK filter petugas → pakai tarif
+                else {
+                    $feePetugas = (int) $tdk->TARIF;
+                }
+
 
                 return [
                     'nama_tindakan' => $tdk->NAMA_TINDAKAN,
                     'tanggal' => $tdk->TANGGAL,
-                    'tarif' => $tdk->TARIF,
+                    'tarif' => (int) $tdk->TARIF,
                     'fee_petugas' => $feePetugas,
-                    'petugas' => $petugas->map(fn($p) => [
-                        'nama' => $p->NAMA_PETUGAS,
-                        'jenis' => $p->JENIS,
-                    ])->values(),
+                    'petugas' => $petugas->map(function ($p) {
+                        return [
+                            'nama' => $p->NAMA_PETUGAS,
+                            'jenis' => $p->JENIS,
+                        ];
+                    })->values(),
                 ];
             });
 
@@ -287,10 +322,11 @@ class LaporanJasaController extends Controller
             ];
         });
 
-        dd($laporan);
+
+        // dd($laporan->toArray());
 
         return view('laporan.index-jasa', [
-            'data' => [],
+            'data' => $laporan,
             'asuransiList' => $this->getAsuransiList(),
             'petugasList' => $this->getPetugasList(),
         ]);
@@ -330,7 +366,4 @@ class LaporanJasaController extends Controller
 
         return $pdf->stream($namaFile);
     }
-
-
-
 }

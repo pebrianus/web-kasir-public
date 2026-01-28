@@ -1,6 +1,10 @@
 @extends('layouts.main') {{-- <-- BERUBAH KE INDUK LAPORAN --}} @section('title', 'Laporan Penerimaan Kasir') {{--
     Konten ini akan dimasukkan ke @yield('laporan_content') --}} @section('content') @php
-            $namaDokter = count($data) ? collect($data)->first()->PETUGASMEDIS : null;
+            // $namaDokter = count($data) ? collect($data)->first()->PETUGASMEDIS : null;
+
+    $no = 1;
+    $grandTotal = 0;
+
         @endphp <div class="card shadow mb-4">
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">Filter Laporan Jasa Radiologi
@@ -118,60 +122,71 @@
                         </tr>
                     </thead>
 
+
                     <tbody>
-                        @php
-                            $no = 1;
-                            $grandTotal = 0;
-                        @endphp
 
-                        @forelse (collect($data)->groupBy('NOPEN') as $nopen => $items)
-                            @php
-                                $pasien = $items->first();
-                            @endphp
 
-                            {{-- BARIS PASIEN --}}
-                            <tr>
-                                <td class="text-center">{{ $no++ }}</td>
-                                <td>{{ $pasien->NORM }}</td>
-                                <td>{{ $pasien->NAMAPASIEN }}</td>
-                                <td class="text-center">{{ $pasien->TANGGALREGISTRASI }}</td>
-                                <td>{{ $pasien->CARABAYAR }}</td>
-                                <td class="text-right">
-                                    {{ number_format($items->sum(fn($i) => (int) $i->DOKTER_OPERATOR * (int) $i->JUMLAH), 0, ',', '.') }}
-                                </td>
-                            </tr>
+@forelse ($data as $row)
+    {{-- BARIS PASIEN --}}
+    <tr class="bg-light">
+        <td class="text-center">{{ $no++ }}</td>
+        <td>{{ $row['no_rm'] }}</td>
+        <td>{{ $row['nama_pasien'] }}</td>
+        <td class="text-center">-</td>
+        <td>-</td>
+        <td class="text-right font-weight-bold">
+            {{ number_format($row['total_fee'], 0, ',', '.') }}
+        </td>
+    </tr>
 
-                            {{-- DETAIL TINDAKAN --}}
-                            @foreach ($items as $detail)
-                                @php
-                                    $subtotal = (int) $detail->DOKTER_OPERATOR * (int) $detail->JUMLAH;
-                                    $grandTotal += $subtotal;
-                                @endphp
-                                <tr>
-                                    <td colspan="5">
-                                        {{ $detail->NAMATINDAKAN }}
-                                    </td>
-                                    <td class="text-right">
-                                        {{ number_format($subtotal, 0, ',', '.') }}
-                                    </td>
-                                </tr>
-                            @endforeach
+    {{-- DETAIL TINDAKAN --}}
+    @foreach ($row['tindakan'] as $tdk)
+        <tr>
+            <td colspan="3" class="pl-4">
+                • {{ $tdk['nama_tindakan'] }}
+                <br>
+                <small class="text-muted">
+                    {{ \Carbon\Carbon::parse($tdk['tanggal'])->format('d-m-Y H:i') }}
+                </small>
+            </td>
+            <td colspan="2">
+                @forelse ($tdk['petugas'] as $p)
+                    <div>
+                        {{ $p['nama'] }}
+                        <small class="text-muted">
+                            ({{ $p['jenis'] == 1 ? 'Dokter' : 'Perawat' }})
+                        </small>
+                    </div>
+                @empty
+                    <em>-</em>
+                @endforelse
+            </td>
+            <td class="text-right">
+                {{ number_format($tdk['fee_petugas'], 0, ',', '.') }}
+            </td>
+        </tr>
+    @endforeach
 
-                        @empty
-                            <tr>
-                                <td colspan="6" class="text-center">
-                                    Data tidak ditemukan
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
+    @php
+        $grandTotal += $row['total_fee'];
+    @endphp
+
+@empty
+    <tr>
+        <td colspan="6" class="text-center">
+            Data tidak ditemukan
+        </td>
+    </tr>
+@endforelse
+</tbody>
+
 
                     {{-- GRAND TOTAL --}}
                     @if (count($data) > 0)
                         <tfoot>
                             <tr class="bg-light">
                                 <td colspan="5" class="text-right font-weight-bold">
-                                    TOTAL JASA BERSIH {{$namaDokter}}
+                                    TOTAL JASA BERSIH
                                 </td>
                                 <td class="text-right font-weight-bold">
                                     {{ number_format($grandTotal, 0, ',', '.') }}
