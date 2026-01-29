@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
     <meta charset="UTF-8">
     <title>Laporan Jasa Radiologi</title>
@@ -19,7 +18,7 @@
 
         .header h3 {
             margin: 0;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
         }
 
@@ -32,142 +31,142 @@
             border-collapse: collapse;
         }
 
-        table th,
-        table td {
-            border: 1px solid #000;
-            padding: 5px;
+        th, td {
+            border: 0.5px solid #000;
+            padding: 4px;
             vertical-align: top;
         }
 
-        table th {
+        th {
             text-align: center;
             font-weight: bold;
         }
 
-        .text-center {
-            text-align: center;
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .bold { font-weight: bold; }
+
+        .bg-light {
+            background-color: #f2f2f2;
         }
 
-        .text-right {
-            text-align: right;
-        }
-
-        .bold {
-            font-weight: bold;
-        }
-
-        /* Hilangkan SEMUA background */
         * {
             background: none !important;
-            background-color: transparent !important;
-        }
-
-        /* Optional: garis lebih tipis */
-        .thin-border th,
-        .thin-border td {
-            border-width: 0.5px;
-        }
-
-        .no-border {
-            border: none !important;
-        }
-
-        .no-border td {
-            border: none !important;
         }
     </style>
-
 </head>
 
 <body>
 
-    {{-- HEADER --}}
-    <div class="header">
-        <h3>LAPORAN JASA RADIOLOGI</h3>
-        <p>Periode: {{ $tanggalDari ?? '01-01-2026' }} s/d {{ $tanggalSampai ?? '13-01-2026' }}</p>
-        <p>Petugas: {{ $petugas ?? 'Semua Petugas' }}</p>
-    </div>
+{{-- HEADER --}}
+<div class="header">
+    <h3>LAPORAN JASA RADIOLOGI</h3>
+    <p>
+        Periode :
+        {{ \Carbon\Carbon::parse($tanggalDari)->format('d-m-Y') }}
+        s/d
+        {{ \Carbon\Carbon::parse($tanggalSampai)->format('d-m-Y') }}
+    </p>
+    <p>Asuransi : {{ $asuransi ?? 'Semua' }}</p>
+</div>
 
-    {{-- TABEL --}}
-    <table>
-        <thead>
-            <tr>
-                <th style="width:5%">No</th>
-                <th style="width:15%">No. RM</th>
-                <th style="width:30%">Nama Pasien</th>
-                <th style="width:15%">Tgl Reg</th>
-                <th style="width:20%">Cara Bayar</th>
-                <th style="width:15%">Jasa Dokter</th>
-            </tr>
-        </thead>
+<table>
+    <thead>
+        <tr>
+            <th width="5%">No</th>
+            <th width="15%">No. RM</th>
+            <th width="30%">Nama Pasien</th>
+            <th width="15%">Tgl Reg</th>
+            <th width="20%">Cara Bayar</th>
+            <th width="15%">Jasa</th>
+        </tr>
+    </thead>
 
-        <tbody>
-            {{-- DATA PASIEN --}}
-            <tr>
-                <td class="text-center">1</td>
-                <td>00-35-93-23</td>
-                <td>BUDIANSYAH</td>
-                <td class="text-center">29-12-2025</td>
-                <td>Tanpa Asuransi</td>
-                <td class="text-right">120.000</td>
+    <tbody>
+        @php
+            $no = 1;
+            $grandTotal = 0;
+        @endphp
+
+        @forelse ($data as $row)
+            {{-- HEADER PASIEN --}}
+            <tr class="bg-light">
+                <td class="text-center">{{ $no++ }}</td>
+                <td>{{ $row['no_rm'] }}</td>
+                <td>{{ $row['nama_pasien'] }}</td>
+                <td class="text-center">
+                    {{ \Carbon\Carbon::parse($row['tanggal_tagihan'])->format('d-m-Y') }}
+                </td>
+                <td>{{ $row['nama_asuransi'] }}</td>
+                <td class="text-right bold">
+                    {{ number_format($row['total_fee'], 0, ',', '.') }}
+                </td>
             </tr>
 
             {{-- DETAIL TINDAKAN --}}
+            @foreach ($row['tindakan'] as $tdk)
+                <tr>
+                    <td colspan="3" style="padding-left:15px">
+                        • {{ $tdk['nama_tindakan'] }}<br>
+                        <small>
+                            {{ \Carbon\Carbon::parse($tdk['tanggal'])->format('d-m-Y H:i') }}
+                        </small>
+                    </td>
+                    <td colspan="2">
+                        @forelse ($tdk['petugas'] as $p)
+                            {{ $p['nama'] }}
+                            <small>
+                                ({{ $p['jenis'] == 1 ? 'Dokter' : 'Perawat' }})
+                            </small><br>
+                        @empty
+                            <em>-</em>
+                        @endforelse
+                    </td>
+                    <td class="text-right">
+                        {{ number_format($tdk['fee_petugas'], 0, ',', '.') }}
+                    </td>
+                </tr>
+            @endforeach
+
+            @php
+                $grandTotal += $row['total_fee'];
+            @endphp
+
+        @empty
             <tr>
-                <td colspan="2"></td>
-                <td colspan="3">
-                    Pemeriksaan Dokter IGD
-                </td>
-                <td class="text-right">
-                    120.000
+                <td colspan="6" class="text-center">
+                    Data tidak ditemukan
                 </td>
             </tr>
+        @endforelse
+    </tbody>
 
-            {{-- SUBTOTAL --}}
-            <tr class="subtotal">
+    @if (count($data))
+        <tfoot>
+            <tr class="bg-light">
                 <td colspan="5" class="text-right bold">
-                    Jumlah IGD
+                    TOTAL JASA BERSIH
                 </td>
                 <td class="text-right bold">
-                    120.000
+                    {{ number_format($grandTotal, 0, ',', '.') }}
                 </td>
             </tr>
+        </tfoot>
+    @endif
+</table>
 
-            {{-- TOTAL SEBELUM DISKON --}}
-            <tr>
-                <td colspan="5" class="text-right">
-                    Total Jasa Sebelum Diskon PEBRI DOKTER IGD
-                </td>
-                <td class="text-right">
-                    120.000
-                </td>
-            </tr>
-
-            {{-- TOTAL BERSIH --}}
-            <tr class="total">
-                <td colspan="5" class="text-right">
-                    Total Jasa Bersih PEBRI DOKTER IGD
-                </td>
-                <td class="text-right">
-                    120.000
-                </td>
-            </tr>
-        </tbody>
-    </table>
-
-    {{-- FOOTER --}}
-    <br><br>
-    <table class="no-border" width="100%">
-        <tr>
-            <td class="no-border" width="70%"></td>
-            <td class="no-border text-center">
-                {{ now()->format('d-m-Y') }}<br>
-                Petugas<br><br><br>
-                <strong>( __________________ )</strong>
-            </td>
-        </tr>
-    </table>
+{{-- FOOTER --}}
+<br><br>
+<table width="100%" style="border:none">
+    <tr>
+        <td width="70%"></td>
+        <td class="text-center" style="border:none">
+            {{ now()->format('d-m-Y') }}<br>
+            Petugas<br><br><br>
+            <strong>( __________________ )</strong>
+        </td>
+    </tr>
+</table>
 
 </body>
-
 </html>

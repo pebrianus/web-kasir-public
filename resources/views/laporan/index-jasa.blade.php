@@ -56,7 +56,7 @@
 
 
 <select name="petugas" id="petugas" class="form-control">
-    <option value="0">-- Semua Petugas --</option>
+    <option value="0" data-jenis="">-- Semua Petugas --</option>
 
     @foreach ($petugasList as $petugas)
         <option
@@ -132,8 +132,8 @@
         <td class="text-center">{{ $no++ }}</td>
         <td>{{ $row['no_rm'] }}</td>
         <td>{{ $row['nama_pasien'] }}</td>
-        <td class="text-center">-</td>
-        <td>-</td>
+        <td class="text-center">{{ \Carbon\Carbon::parse($row['tanggal_tagihan'])->format('d-m-Y') }}</td>
+        <td>{{ $row['nama_asuransi'] }}</td>
         <td class="text-right font-weight-bold">
             {{ number_format($row['total_fee'], 0, ',', '.') }}
         </td>
