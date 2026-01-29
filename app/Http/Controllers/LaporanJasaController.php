@@ -72,11 +72,11 @@ class LaporanJasaController extends Controller
 
     private function buildLaporanJasa(array $filter)
     {
-        $tanggalDari = $filter['tanggal_dari'] ?? null;
-        $tanggalSampai = $filter['tanggal_sampai'] ?? null;
-        $asuransi = $filter['asuransi'] ?? null;
-        $petugasFilter = $filter['petugas'] ?? null;
-        $jenisPetugas = $filter['jenis_petugas'] ?? null;
+        $tanggalDari = isset($filter['tanggal_dari']) ? $filter['tanggal_dari'] : null;
+        $tanggalSampai = isset($filter['tanggal_sampai']) ? $filter['tanggal_sampai'] : null;
+        $asuransi = isset($filter['asuransi']) ? $filter['asuransi'] : null;
+        $petugasFilter = isset($filter['petugas']) ? $filter['petugas'] : null;
+        $jenisPetugas = isset($filter['jenis_petugas']) ? $filter['jenis_petugas'] : null;
 
         /* =========================
          * 1. TAGIHAN KASIR (LUNAS)
@@ -90,14 +90,14 @@ class LaporanJasaController extends Controller
         )->where('status_kasir', 'lunas');
 
         if ($asuransi && $asuransi !== 'Semua') {
-            $queryTagihan->where('nama_asuransi', 'LIKE', "%{$asuransi}%");
+            $queryTagihan->where('nama_asuransi', 'LIKE', '%' . $asuransi . '%');
         }
 
         if ($tanggalDari && $tanggalSampai) {
-            $queryTagihan->whereBetween('simgos_tanggal_tagihan', [
+            $queryTagihan->whereBetween('simgos_tanggal_tagihan', array(
                 Carbon::parse($tanggalDari)->startOfDay(),
                 Carbon::parse($tanggalSampai)->endOfDay(),
-            ]);
+            ));
         } else {
             $queryTagihan->whereDate('simgos_tanggal_tagihan', Carbon::today());
         }
@@ -129,15 +129,14 @@ class LaporanJasaController extends Controller
         $pendaftaran = TagihanPendaftaran::whereIn(
             'TAGIHAN',
             $tagihanRadiologiIds
-        )->get(['TAGIHAN', 'PENDAFTARAN']);
+        )->get(array('TAGIHAN', 'PENDAFTARAN'));
 
         $kunjungan = Kunjungan::whereIn(
             'NOPEN',
             $pendaftaran->pluck('PENDAFTARAN')
-        )->where('RUANGAN', '101030106')
-            ->get(['NOMOR', 'NOPEN']);
-
-        $kunjunganIds = $kunjungan->pluck('NOMOR');
+        )
+            ->where('RUANGAN', '101030106')
+            ->get(array('NOMOR', 'NOPEN'));
 
         /* =========================
          * 4. TARIF TERBARU
@@ -166,8 +165,8 @@ class LaporanJasaController extends Controller
             'tindakan_medis.TINDAKAN'
         )
             ->leftJoin($tarifTerbaru, 'tt.TINDAKAN', '=', 'tindakan_medis.TINDAKAN')
-            ->whereIn('tindakan_medis.KUNJUNGAN', $kunjunganIds)
-            ->select([
+            ->whereIn('tindakan_medis.KUNJUNGAN', $kunjungan->pluck('NOMOR'))
+            ->select(array(
                 'tindakan_medis.ID as TINDAKAN_MEDIS_ID',
                 'tindakan_medis.KUNJUNGAN',
                 't.NAMA as NAMA_TINDAKAN',
@@ -175,23 +174,21 @@ class LaporanJasaController extends Controller
                 'tt.DOKTER_OPERATOR',
                 'tt.PARAMEDIS',
                 'tt.TARIF',
-            ])
+            ))
             ->get();
 
         /* =========================
          * 6. PETUGAS
          * ========================= */
         $petugasTindakan = PetugasTindakanMedis::from('petugas_tindakan_medis as ptm')
-            ->leftJoin(
-                'master.dokter as d',
-                fn($j) =>
-                $j->on('d.ID', '=', 'ptm.MEDIS')->where('ptm.JENIS', 1)
-            )
-            ->leftJoin(
-                'master.perawat as pr',
-                fn($j) =>
-                $j->on('pr.ID', '=', 'ptm.MEDIS')->where('ptm.JENIS', 3)
-            )
+            ->leftJoin('master.dokter as d', function ($j) {
+                $j->on('d.ID', '=', 'ptm.MEDIS')
+                    ->where('ptm.JENIS', 1);
+            })
+            ->leftJoin('master.perawat as pr', function ($j) {
+                $j->on('pr.ID', '=', 'ptm.MEDIS')
+                    ->where('ptm.JENIS', 3);
+            })
             ->leftJoin(DB::raw('master.pegawai as p'), function ($j) {
                 $j->on('p.NIP', '=', DB::raw("
                 CASE
@@ -212,11 +209,11 @@ class LaporanJasaController extends Controller
         }
 
         $petugasTindakan = $petugasTindakan
-            ->select([
+            ->select(array(
                 'ptm.TINDAKAN_MEDIS',
                 'ptm.JENIS',
                 DB::raw("master.getNamaLengkapPegawai(p.NIP) as NAMA_PETUGAS"),
-            ])
+            ))
             ->get()
             ->groupBy('TINDAKAN_MEDIS');
 
@@ -224,6 +221,7 @@ class LaporanJasaController extends Controller
          * 7. RAKIT LAPORAN
          * ========================= */
         return $tagihanHeadRadiologi->map(function ($tagihan) use ($pendaftaran, $kunjungan, $tindakan, $petugasTindakan, $jenisPetugas) {
+
             $nopen = $pendaftaran
                 ->where('TAGIHAN', $tagihan->simgos_tagihan_id)
                 ->pluck('PENDAFTARAN');
@@ -236,26 +234,33 @@ class LaporanJasaController extends Controller
                 ->whereIn('KUNJUNGAN', $kunjunganIds)
                 ->map(function ($tdk) use ($petugasTindakan, $jenisPetugas) {
 
-                    $fee = match ($jenisPetugas) {
-                        1 => (int) $tdk->DOKTER_OPERATOR,
-                        3 => (int) $tdk->PARAMEDIS,
-                        default => (int) $tdk->TARIF,
-                    };
+                    if ($jenisPetugas == 1) {
+                        $fee = (int) $tdk->DOKTER_OPERATOR;
+                    } elseif ($jenisPetugas == 3) {
+                        $fee = (int) $tdk->PARAMEDIS;
+                    } else {
+                        $fee = (int) $tdk->TARIF;
+                    }
 
-                    return [
+                    $petugas = isset($petugasTindakan[$tdk->TINDAKAN_MEDIS_ID])
+                        ? $petugasTindakan[$tdk->TINDAKAN_MEDIS_ID]
+                        : collect();
+
+                    return array(
                         'nama_tindakan' => $tdk->NAMA_TINDAKAN,
                         'tanggal' => $tdk->TANGGAL,
                         'tarif' => (int) $tdk->TARIF,
                         'fee_petugas' => $fee,
-                        'petugas' => ($petugasTindakan[$tdk->TINDAKAN_MEDIS_ID] ?? collect())
-                            ->map(fn($p) => [
+                        'petugas' => $petugas->map(function ($p) {
+                            return array(
                                 'nama' => $p->NAMA_PETUGAS,
                                 'jenis' => $p->JENIS,
-                            ])->values(),
-                    ];
+                            );
+                        })->values(),
+                    );
                 });
 
-            return [
+            return array(
                 'no_rm' => $tagihan->simgos_norm,
                 'nama_pasien' => $tagihan->nama_pasien,
                 'tanggal_tagihan' => $tagihan->simgos_tanggal_tagihan,
@@ -263,49 +268,59 @@ class LaporanJasaController extends Controller
                 'tindakan' => $detailTindakan,
                 'total_tarif' => $detailTindakan->sum('tarif'),
                 'total_fee' => $detailTindakan->sum('fee_petugas'),
-            ];
+            );
         });
     }
-
-
 
     public function indexJasa(Request $request)
     {
         if ($request->isMethod('post')) {
-            session([
-                'laporan_jasa_filter' => $request->only([
+
+            session(array(
+                'laporan_jasa_filter' => $request->only(array(
                     'tanggal_dari',
                     'tanggal_sampai',
                     'asuransi',
                     'petugas',
                     'jenis_petugas',
-                ])
-            ]);
+                ))
+            ));
 
             return redirect()->route('laporan.jasa.index');
         }
 
-        $filter = session('laporan_jasa_filter', []);
+        $filter = session('laporan_jasa_filter', array());
 
         $data = $this->buildLaporanJasa($filter);
 
-        return view('laporan.index-jasa', [
+        return view('laporan.index-jasa', array(
             'data' => $data,
             'asuransiList' => $this->getAsuransiList(),
             'petugasList' => $this->getPetugasList(),
-        ]);
+        ));
     }
 
     public function cetakLaporanJasa()
     {
         $filter = session('laporan_jasa_filter', []);
 
-        $tanggalDari = $filter['tanggal_dari'] ?? Carbon::today()->toDateString();
-        $tanggalSampai = $filter['tanggal_sampai'] ?? Carbon::today()->toDateString();
-        $asuransi = $filter['asuransi'] ?? 'Semua';
-        $petugas = $filter['petugas'] ?? null;
+        $tanggalDari = isset($filter['tanggal_dari'])
+            ? $filter['tanggal_dari']
+            : Carbon::today()->toDateString();
 
-        // 🔥 ambil data laporan (SAMA DENGAN INDEX)
+        $tanggalSampai = isset($filter['tanggal_sampai'])
+            ? $filter['tanggal_sampai']
+            : Carbon::today()->toDateString();
+
+        $asuransi = isset($filter['asuransi'])
+            ? $filter['asuransi']
+            : 'Semua';
+
+        $petugas = isset($filter['petugas'])
+            ? $filter['petugas']
+            : null;
+
+        // ambil data laporan (SAMA DENGAN INDEX)
         $data = $this->buildLaporanJasa($filter);
 
         $pdf = Pdf::loadView('reports.laporan-jasa', [
@@ -321,5 +336,6 @@ class LaporanJasaController extends Controller
 
         return $pdf->stream($namaFile);
     }
+
 
 }
