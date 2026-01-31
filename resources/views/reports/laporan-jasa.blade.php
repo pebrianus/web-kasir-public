@@ -156,17 +156,7 @@
 </table>
 
 {{-- FOOTER --}}
-<br><br>
-<table width="100%" style="border:none">
-    <tr>
-        <td width="70%"></td>
-        <td class="text-center" style="border:none">
-            {{ now()->format('d-m-Y') }}<br>
-            Petugas<br><br><br>
-            <strong>( __________________ )</strong>
-        </td>
-    </tr>
-</table>
+
 
 </body>
 </html>

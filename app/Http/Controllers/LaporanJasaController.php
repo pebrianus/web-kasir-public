@@ -146,12 +146,12 @@ class LaporanJasaController extends Controller
             SELECT tt1.*
             FROM master.tarif_tindakan tt1
             WHERE tt1.STATUS = 1
-            AND tt1.TANGGAL = (
-                SELECT MAX(tt2.TANGGAL)
-                FROM master.tarif_tindakan tt2
-                WHERE tt2.TINDAKAN = tt1.TINDAKAN
-                AND tt2.STATUS = 1
-            )
+              AND tt1.TANGGAL = (
+                  SELECT MAX(tt2.TANGGAL)
+                  FROM master.tarif_tindakan tt2
+                  WHERE tt2.TINDAKAN = tt1.TINDAKAN
+                    AND tt2.STATUS = 1
+              )
         ) as tt
     ");
 
@@ -220,7 +220,7 @@ class LaporanJasaController extends Controller
         /* =========================
          * 7. RAKIT LAPORAN
          * ========================= */
-        return $tagihanHeadRadiologi->map(function ($tagihan) use ($pendaftaran, $kunjungan, $tindakan, $petugasTindakan, $jenisPetugas) {
+        $laporan = $tagihanHeadRadiologi->map(function ($tagihan) use ($pendaftaran, $kunjungan, $tindakan, $petugasTindakan, $jenisPetugas) {
 
             $nopen = $pendaftaran
                 ->where('TAGIHAN', $tagihan->simgos_tagihan_id)
@@ -242,6 +242,11 @@ class LaporanJasaController extends Controller
                         $fee = (int) $tdk->TARIF;
                     }
 
+                    // ⛔ skip tindakan fee 0 saat filter petugas
+                    if ($jenisPetugas && $fee <= 0) {
+                        return null;
+                    }
+
                     $petugas = isset($petugasTindakan[$tdk->TINDAKAN_MEDIS_ID])
                         ? $petugasTindakan[$tdk->TINDAKAN_MEDIS_ID]
                         : collect();
@@ -258,7 +263,14 @@ class LaporanJasaController extends Controller
                             );
                         })->values(),
                     );
-                });
+                })
+                ->filter()
+                ->values();
+
+            // ⛔ skip pasien jika tidak ada fee saat filter petugas
+            if ($jenisPetugas && $detailTindakan->isEmpty()) {
+                return null;
+            }
 
             return array(
                 'no_rm' => $tagihan->simgos_norm,
@@ -270,7 +282,10 @@ class LaporanJasaController extends Controller
                 'total_fee' => $detailTindakan->sum('fee_petugas'),
             );
         });
+
+        return $laporan->filter()->values();
     }
+
 
     public function indexJasa(Request $request)
     {
@@ -292,6 +307,7 @@ class LaporanJasaController extends Controller
         $filter = session('laporan_jasa_filter', array());
 
         $data = $this->buildLaporanJasa($filter);
+        // dd($data->toArray());
 
         return view('laporan.index-jasa', array(
             'data' => $data,
@@ -320,8 +336,20 @@ class LaporanJasaController extends Controller
             ? $filter['petugas']
             : null;
 
-        // ambil data laporan (SAMA DENGAN INDEX)
+        // ambil data laporan
         $data = $this->buildLaporanJasa($filter);
+
+        // ===============================
+// TESTING PDF: DUPLIKAT DATA 30x
+// ===============================
+        $testingMultiply = 30;
+
+        $data = collect(range(1, $testingMultiply))
+            ->flatMap(function () use ($data) {
+                return $data;
+            })
+            ->values();
+
 
         $pdf = Pdf::loadView('reports.laporan-jasa', [
             'data' => $data,
@@ -336,6 +364,4 @@ class LaporanJasaController extends Controller
 
         return $pdf->stream($namaFile);
     }
-
-
 }

@@ -94,7 +94,7 @@
 
                             {{-- KANAN: Cetak --}}
                             <div>
-                                <a href="{{ route('laporan.jasa.cetak') }}" target="blank" class="btn btn-success btn-sm">
+                                <a href="{{ route('laporan.jasa.cetak') }}" target="_blank" class="btn btn-success btn-sm">
                                     <i class="fas fa-print fa-sm me-1"></i> Cetak
                                 </a>
                             </div>
@@ -118,11 +118,9 @@
                             <th style="width:30%">Nama Pasien</th>
                             <th style="width:15%">Tgl Reg</th>
                             <th style="width:20%">Cara Bayar</th>
-                            <th style="width:15%">Jasa Dokter</th>
+                            <th style="width:15%">Biaya</th>
                         </tr>
                     </thead>
-
-
                     <tbody>
 
 
@@ -186,7 +184,7 @@
                         <tfoot>
                             <tr class="bg-light">
                                 <td colspan="5" class="text-right font-weight-bold">
-                                    TOTAL JASA BERSIH
+                                    TOTAL BIAYA
                                 </td>
                                 <td class="text-right font-weight-bold">
                                     {{ number_format($grandTotal, 0, ',', '.') }}
