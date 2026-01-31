@@ -25,7 +25,9 @@ class KasirController extends Controller
     {
         return DB::connection('simgos_pembayaran')
             ->table('tagihan as t')
-            ->join('pendaftaran.penjamin as pj', 't.ID', '=', 'pj.NOPEN')
+            // Perubahan di prod
+            ->join('tagihan_pendaftaran as tp', 'tp.TAGIHAN', '=', 't.ID')
+            ->join('pendaftaran.penjamin as pj', 'tp.PENDAFTARAN', '=', 'pj.NOPEN')
             ->join('master.referensi as ref_asuransi', function ($join) {
                 $join->on('pj.JENIS', '=', 'ref_asuransi.ID')->where('ref_asuransi.JENIS', 10); // Jenis Asuransi
             })
