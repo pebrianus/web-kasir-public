@@ -110,24 +110,14 @@ class KasirController extends Controller
             ->orderBy('t.TANGGAL', 'desc');
 
 
-        $lunasNopen = KasirTagihanHead::where('simgos_norm', $norm)
-            ->where('status_kasir', 'lunas')
-            ->whereNotNull('simgos_nopen')
-            ->pluck('simgos_nopen')
-            ->unique();
-
-        if ($statusFilter !== 'proses') {
-
-            // PROSES = semua tagihan yang NOPEN-nya BELUM lunas
-            // termasuk:
-            // - tagihan baru
-            // - tagihan draft
-            $daftarTagihanQuery->whereNotIn('tp.PENDAFTARAN', $lunasNopen);
-
+        $lunasIds = $processedTags->where('status_kasir', 'lunas')->pluck('simgos_tagihan_id');
+        if ($statusFilter == 'proses') {
+            // Tampilkan tagihan yang BELUM lunas
+            // (Termasuk yang 'draft' ATAU yang 'baru' / belum ada di lokal)
+            $daftarTagihanQuery->whereNotIn('t.ID', $lunasIds);
         } else {
-
-            // LUNAS = semua tagihan yang NOPEN-nya SUDAH lunas
-            $daftarTagihanQuery->whereIn('tp.PENDAFTARAN', $lunasNopen);
+            // Tampilkan HANYA tagihan yang SUDAH lunas
+            $daftarTagihanQuery->whereIn('t.ID', $lunasIds);
         }
 
         $daftarTagihan = $daftarTagihanQuery->get();
