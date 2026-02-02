@@ -284,6 +284,13 @@
                             <span class="text">Cetak Resep</span>
                         </a>
 
+                        <a href="{{ route('rincian.cetak.lab', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
+                            target="_blank" class="btn btn-secondary btn-icon-split btn-block mb-2">
+                            <span class="icon text-white-50"> <i class="fas fa-vials"></i>
+                            </span>
+                            <span class="text">Cetak Rincian Lab</span>
+                        </a>
+
                         <hr class="my-4">
                         <form action="{{ route('kasir.bayar.batal', ['id' => $head->id]) }}" method="POST"
                             onsubmit="return confirm('Pembayaran akan dihapus dari laporan harian dan status tagihan kembali menjadi DRAFT.\n\nApakah Anda yakin ingin membatalkan pembayaran ini?');">

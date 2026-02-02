@@ -1006,6 +1006,95 @@ class KasirController extends Controller
         return $pdf->stream('rincian-pasien-' . $tagihanHead->simgos_tagihan_id . '.pdf');
     }
 
+    public function cetakRincianLab(Request $request, $id)
+    {
+        $jenis_kasir = $request->input('jenis_kasir');
+        $jenisList = [
+            1 => 'Rawat Jalan',
+            2 => 'IGD',
+            3 => 'Rawat Inap',
+            4 => 'Laboratorium',
+            5 => 'Radiologi',
+        ];
+        $jenis_kasir_text = $jenisList[$jenis_kasir] ?? 'Tidak diketahui';
+
+        // 1. Header Tagihan
+        $tagihanHead = KasirTagihanHead::findOrFail($id);
+
+        // 2. Tipe rincian
+        $tipeKuitansi = 'Rincian Lab';
+
+        // 3. Ambil SEMUA detail (pasien + asuransi), TANPA filter nominal
+        $detail = KasirTagihanDetail::where('kasir_tagihan_head_id', $id)->get();
+
+        // 4. Jenis tarif (khusus lab)
+        $jenisTarifList = [
+            8 => 'Pemeriksaan Lab',
+        ];
+
+        $detailByJenis = [];
+        $grandTotal = 0;
+
+        foreach ($detail as $item) {
+            $jenis = $item->simgos_jenis_tarif;
+
+            // --- FILTER KHUSUS LAB ---
+            if ($jenis == 3) {
+                // Cek apakah tindakan medis ini LAB
+                $tindakanInfo = DB::connection('simgos_pembayaran')
+                    ->table('layanan.tindakan_medis as tm')
+                    ->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')
+                    ->where('tm.ID', $item->simgos_ref_id)
+                    ->select('t.JENIS as jenis_tindakan')
+                    ->first();
+
+                if (!$tindakanInfo || $tindakanInfo->jenis_tindakan != 8) {
+                    continue; // bukan lab → skip
+                }
+
+                $jenis = 8; // pastikan masuk grup LAB
+            } elseif ($jenis != 8) {
+                // selain tindakan medis lab & tarif lab langsung → skip
+                continue;
+            }
+
+            $dibayarPasien = $item->nominal_ditanggung_pasien ?? 0;
+            $dibayarAsuransi = $item->nominal_ditanggung_asuransi ?? 0;
+            $totalItem = $dibayarPasien + $dibayarAsuransi;
+
+            // ---- MASUKKAN KE GRUP LAB ----
+            $detailByJenis[8][] = [
+                'uraian' => $item->deskripsi_item,
+                'qty' => $item->qty,
+                'harga' => $item->harga_satuan,
+                'subtotal' => $item->subtotal,
+                'dibayar_pasien' => $dibayarPasien,
+                'dibayar_asuransi' => $dibayarAsuransi,
+                'total' => $totalItem,
+            ];
+
+            $grandTotal += $totalItem;
+        }
+
+        // 5. Data ke view
+        $dataUntukView = [
+            'head' => $tagihanHead,
+            'detailByJenis' => $detailByJenis,
+            'grandTotal' => $grandTotal,
+            'tipeKuitansi' => $tipeKuitansi,
+            'namaKasir' => Auth::user()->nama,
+            'jenis_kasir_text' => $jenis_kasir_text,
+            'jenisTarifList' => $jenisTarifList,
+        ];
+
+        // 6. Generate PDF
+        $pdf = PDF::loadView('reports.rincian-lab', $dataUntukView);
+        $pdf->setPaper([0, 0, 612.28, 842], 'portrait');
+
+        return $pdf->stream('rincian-lab-' . $tagihanHead->simgos_tagihan_id . '.pdf');
+    }
+
+
     public function cetakResep(Request $request, $id)
     {
         // =====================================================

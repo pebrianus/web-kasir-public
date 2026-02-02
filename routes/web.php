@@ -107,6 +107,11 @@ Route::get('/kasir/rincian/pasien/cetak/{id}', [KasirController::class, 'cetakRi
     ->name('rincian.cetak.pasien')
     ->middleware('auth');
 
+// Rute untuk mencetak rincian tagihan lab
+Route::get('/kasir/rincian/lab/cetak/{id}', [KasirController::class, 'cetakRincianLab'])
+    ->name('rincian.cetak.lab')
+    ->middleware('auth');
+
 // Rute untuk mencetak resep pasien
 Route::get('/cetak-resep/{id}', [KasirController::class, 'cetakResep'])
     ->name('rincian.cetak.resep')
