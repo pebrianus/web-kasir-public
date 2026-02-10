@@ -139,7 +139,10 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
                         <div>
                             <h6 class="collapse-header">Laporan Jasa</h6>
                             <a class="collapse-item" href="{{ route('laporan.jasa.index') }}">
-                                Laporan Jasa
+                                Laporan Jasa Radiologi
+                            </a>
+                            <a class="collapse-item" href="{{ route('laporan.jasa.lab.index') }}">
+                                Laporan Jasa Laboratorium
                             </a>
                         </div>
                     </div>
@@ -183,7 +186,8 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
                                     <div class="dropdown-divider"></div>
 
                                     {{-- Form untuk "Tutup Kasir" --}}
-                                    <a class="dropdown-item" href="{{ route('kasir.sesi.tutup') }}" onclick="event.preventDefault();
+                                    <a class="dropdown-item" href="{{ route('kasir.sesi.tutup') }}"
+                                        onclick="event.preventDefault();
                                                             if(confirm('Anda yakin ingin menutup sesi kasir saat ini?')) {
                                                                 document.getElementById('tutup-kasir-form').submit();
                                                             }">
@@ -191,15 +195,15 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
                                         Tutup Kasir
                                     </a>
 
-                                    <form id="tutup-kasir-form" action="{{ route('kasir.sesi.tutup') }}" method="POST"
-                                        class="d-none">
+                                    <form id="tutup-kasir-form" action="{{ route('kasir.sesi.tutup') }}"
+                                        method="POST" class="d-none">
                                         @csrf
                                     </form>
                                 </div>
                             @else
                                 {{-- JIKA KASIR SEDANG TUTUP --}}
-                                <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="modal"
-                                    data-target="#modalBukaKasir" {{-- Memicu Modal --}}
+                                <a class="nav-link dropdown-toggle" href="#" role="button"
+                                    data-toggle="modal" data-target="#modalBukaKasir" {{-- Memicu Modal --}}
                                     title="Kasir DITUTUP. Klik untuk Buka Sesi.">
                                     <i class="fas fa-cash-register fa-fw text-danger"></i> </a>
                             @endif
@@ -226,7 +230,8 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
                                 </a>
                                 <div class="dropdown-divider"></div>
                                 {{-- Tombol Logout --}}
-                                <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
+                                <a class="dropdown-item" href="#" data-toggle="modal"
+                                    data-target="#logoutModal">
                                     <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
                                     Logout
                                 </a>
@@ -273,7 +278,8 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
                     <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
 
                     {{-- PERBAIKAN TOMBOL LOGOUT AGAR SESUAI LARAVEL --}}
-                    <a class="btn btn-primary" href="{{ route('logout') }}" onclick="event.preventDefault();
+                    <a class="btn btn-primary" href="{{ route('logout') }}"
+                        onclick="event.preventDefault();
                                      document.getElementById('logout-form').submit();">
                         Logout
                     </a>
@@ -334,7 +340,7 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
     <script src="{{ asset('vendor/datatables/dataTables.bootstrap4.min.js') }}"></script>
 
     <script>
-        $(document).ready(function () { });
+        $(document).ready(function() {});
     </script>
 
     @stack('scripts')

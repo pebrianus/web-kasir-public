@@ -8,13 +8,13 @@
 
 @endphp <div class="card shadow mb-4">
         <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Filter Laporan Jasa Radiologi
+            <h6 class="m-0 font-weight-bold text-primary">Filter Laporan Jasa Laboratorium
             </h6>
         </div>
         <div class="card-body">
 
             {{-- Form Filter Tanggal --}}
-            <form method="POST" action="{{ route('laporan.jasa.filter') }}">
+            <form method="POST" action="{{ route('laporan.jasa.lab.filter') }}">
                 @csrf
                 <div class="row align-items-end">
 
@@ -90,7 +90,8 @@
 
                             {{-- KANAN: Cetak --}}
                             <div>
-                                <a href="{{ route('laporan.jasa.cetak') }}" target="_blank" class="btn btn-success btn-sm">
+                                <a href="{{ route('laporan.jasa.lab.cetak') }}" target="_blank"
+                                    class="btn btn-success btn-sm">
                                     <i class="fas fa-print fa-sm me-1"></i> Cetak
                                 </a>
                             </div>
@@ -149,7 +150,7 @@
                                             <div>
                                                 {{ $p['nama'] }}
                                                 <small class="text-muted">
-                                                    ({{ $p['jenis'] == 1 ? 'Dokter' : 'Radiografer' }})
+                                                    ({{ $p['jenis'] == 1 ? 'Dokter' : 'Analis' }})
                                                 </small>
                                             </div>
                                         @empty

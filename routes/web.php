@@ -145,9 +145,17 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/laporan/jasa', [LaporanJasaController::class, 'indexJasa'])
         ->name('laporan.jasa.filter');
 
-
     Route::get('/laporan/jasa/cetak', [LaporanJasaController::class, 'cetakLaporanJasa'])
         ->name('laporan.jasa.cetak');
+
+    Route::get('/laporan/jasa-lab', [LaporanJasaController::class, 'indexJasaLab'])
+        ->name('laporan.jasa.lab.index');
+
+    Route::post('/laporan/jasa-lab', [LaporanJasaController::class, 'indexJasaLab'])
+        ->name('laporan.jasa.lab.filter');
+
+    Route::get('/laporan/jasa-lab/cetak', [LaporanJasaController::class, 'cetakLaporanJasaLab'])
+        ->name('laporan.jasa.lab.cetak');
 });
 
 // Route batal tagihan
