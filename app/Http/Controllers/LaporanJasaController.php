@@ -145,9 +145,8 @@ class LaporanJasaController extends Controller
             (
                 SELECT tt1.*
                 FROM master.tarif_tindakan tt1
-                WHERE tt1.STATUS = 1
-                AND tt1.TANGGAL = (
-                    SELECT MAX(tt2.TANGGAL)
+                WHERE tt1.ID = (
+                    SELECT MAX(tt2.ID)
                     FROM master.tarif_tindakan tt2
                     WHERE tt2.TINDAKAN = tt1.TINDAKAN
                         AND tt2.STATUS = 1
@@ -221,7 +220,7 @@ class LaporanJasaController extends Controller
         /* =========================
          * 7. RAKIT LAPORAN
          * ========================= */
-        $laporan = $tagihanHeadRadiologi->map(function ($tagihan) use ($pendaftaran, $kunjungan, $tindakan, $petugasTindakan, $jenisPetugas) {
+        $laporan = $tagihanHeadRadiologi->map(function ($tagihan) use ($pendaftaran, $kunjungan, $tindakan, $petugasTindakan, $jenisPetugas, $petugasFilter) {
 
             $nopen = $pendaftaran
                 ->where('TAGIHAN', $tagihan->simgos_tagihan_id)
@@ -233,7 +232,7 @@ class LaporanJasaController extends Controller
 
             $detailTindakan = $tindakan
                 ->whereIn('KUNJUNGAN', $kunjunganIds)
-                ->map(function ($tdk) use ($petugasTindakan, $jenisPetugas) {
+                ->map(function ($tdk) use ($petugasTindakan, $jenisPetugas, $petugasFilter) {
 
                     if ($jenisPetugas == 1) {
                         $fee = (int) $tdk->DOKTER_OPERATOR;
@@ -243,14 +242,18 @@ class LaporanJasaController extends Controller
                         $fee = (int) $tdk->TARIF;
                     }
 
+                    $petugas = isset($petugasTindakan[$tdk->TINDAKAN_MEDIS_ID])
+                        ? $petugasTindakan[$tdk->TINDAKAN_MEDIS_ID]
+                        : collect();
+
+                    if ($petugasFilter && $petugas->isEmpty()) {
+                        return null;
+                    }
+
                     // ⛔ skip tindakan fee 0 saat filter petugas
                     if ($jenisPetugas && $fee <= 0) {
                         return null;
                     }
-
-                    $petugas = isset($petugasTindakan[$tdk->TINDAKAN_MEDIS_ID])
-                        ? $petugasTindakan[$tdk->TINDAKAN_MEDIS_ID]
-                        : collect();
 
                     return array(
                         'nama_tindakan' => $tdk->NAMA_TINDAKAN,
@@ -493,9 +496,8 @@ class LaporanJasaController extends Controller
             (
                 SELECT tt1.*
                 FROM master.tarif_tindakan tt1
-                WHERE tt1.STATUS = 1
-                AND tt1.TANGGAL = (
-                    SELECT MAX(tt2.TANGGAL)
+                WHERE tt1.ID = (
+                    SELECT MAX(tt2.ID)
                     FROM master.tarif_tindakan tt2
                     WHERE tt2.TINDAKAN = tt1.TINDAKAN
                         AND tt2.STATUS = 1
@@ -569,7 +571,7 @@ class LaporanJasaController extends Controller
         /* =========================
          * 7. RAKIT LAPORAN
          * ========================= */
-        $laporan = $tagihanHeadLab->map(function ($tagihan) use ($pendaftaran, $kunjungan, $tindakan, $petugasTindakan, $jenisPetugas) {
+        $laporan = $tagihanHeadLab->map(function ($tagihan) use ($pendaftaran, $kunjungan, $tindakan, $petugasTindakan, $jenisPetugas, $petugasFilter) {
 
             $nopen = $pendaftaran
                 ->where('TAGIHAN', $tagihan->simgos_tagihan_id)
@@ -581,7 +583,7 @@ class LaporanJasaController extends Controller
 
             $detailTindakan = $tindakan
                 ->whereIn('KUNJUNGAN', $kunjunganIds)
-                ->map(function ($tdk) use ($petugasTindakan, $jenisPetugas) {
+                ->map(function ($tdk) use ($petugasTindakan, $jenisPetugas, $petugasFilter) {
 
                     if ($jenisPetugas == 1) {
                         $fee = (int) $tdk->DOKTER_OPERATOR;
@@ -591,14 +593,18 @@ class LaporanJasaController extends Controller
                         $fee = (int) $tdk->TARIF;
                     }
 
+                    $petugas = isset($petugasTindakan[$tdk->TINDAKAN_MEDIS_ID])
+                        ? $petugasTindakan[$tdk->TINDAKAN_MEDIS_ID]
+                        : collect();
+
+                    if ($petugasFilter && $petugas->isEmpty()) {
+                        return null;
+                    }
+
                     // ⛔ skip tindakan fee 0 saat filter petugas
                     if ($jenisPetugas && $fee <= 0) {
                         return null;
                     }
-
-                    $petugas = isset($petugasTindakan[$tdk->TINDAKAN_MEDIS_ID])
-                        ? $petugasTindakan[$tdk->TINDAKAN_MEDIS_ID]
-                        : collect();
 
                     return array(
                         'nama_tindakan' => $tdk->NAMA_TINDAKAN,

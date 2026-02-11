@@ -22,14 +22,14 @@
                     <div class="col-md-3">
                         <label class="small">Tanggal Dari</label>
                         <input type="date" class="form-control" name="tanggal_dari"
-                            value="{{ session('laporan_jasa_filter.tanggal_dari') }}">
+                            value="{{ session('laporan_jasa_lab_filter.tanggal_dari') }}">
                     </div>
 
                     {{-- Tanggal Sampai --}}
                     <div class="col-md-3">
                         <label class="small">Tanggal Sampai</label>
                         <input type="date" class="form-control" name="tanggal_sampai"
-                            value="{{ session('laporan_jasa_filter.tanggal_sampai') }}">
+                            value="{{ session('laporan_jasa_lab_filter.tanggal_sampai') }}">
                     </div>
 
                     {{-- Asuransi --}}
@@ -38,13 +38,13 @@
 
                         <select class="form-control" name="asuransi">
                             <option value="Semua"
-                                {{ session('laporan_jasa_filter.asuransi', 'Semua') == 'Semua' ? 'selected' : '' }}>
+                                {{ session('laporan_jasa_lab_filter.asuransi', 'Semua') == 'Semua' ? 'selected' : '' }}>
                                 -- Semua Asuransi --
                             </option>
 
                             @foreach ($asuransiList as $asuransi)
                                 <option value="{{ $asuransi->DESKRIPSI }}"
-                                    {{ session('laporan_jasa_filter.asuransi') == $asuransi->DESKRIPSI ? 'selected' : '' }}>
+                                    {{ session('laporan_jasa_lab_filter.asuransi') == $asuransi->DESKRIPSI ? 'selected' : '' }}>
                                     {{ $asuransi->DESKRIPSI }}
                                 </option>
                             @endforeach
@@ -61,14 +61,14 @@
 
                             @foreach ($petugasList as $petugas)
                                 <option value="{{ $petugas->ID_PETUGAS }}" data-jenis="{{ $petugas->JENIS }}"
-                                    {{ session('laporan_jasa_filter.petugas') == $petugas->ID_PETUGAS ? 'selected' : '' }}>
+                                    {{ session('laporan_jasa_lab_filter.petugas') == $petugas->ID_PETUGAS ? 'selected' : '' }}>
                                     {{ $petugas->nama_petugas }}
                                 </option>
                             @endforeach
                         </select>
 
                         <input type="hidden" name="jenis_petugas" id="jenis_petugas"
-                            value="{{ session('laporan_jasa_filter.jenis_petugas') }}">
+                            value="{{ session('laporan_jasa_lab_filter.jenis_petugas') }}">
 
                     </div>
 
