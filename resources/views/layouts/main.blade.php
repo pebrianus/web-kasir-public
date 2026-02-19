@@ -111,6 +111,9 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
                             <a class="collapse-item" href="{{ route('pencarian.rawat-jalan', ['jenis' => 5]) }}">
                                 Kasir Radiologi
                             </a>
+                            <a class="collapse-item" href="{{ route('farmasi.index') }}">
+                                Kasir Farmasi
+                            </a>
                         @endif
 
                     </div>

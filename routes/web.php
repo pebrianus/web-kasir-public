@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\FarmasiController;
 use App\Http\Controllers\LaporanJasaController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
@@ -161,3 +162,7 @@ Route::middleware(['auth'])->group(function () {
 // Route batal tagihan
 Route::post('/kasir/tagihan/{id}/batal', [App\Http\Controllers\KasirController::class, 'batalPembayaran'])
     ->name('kasir.bayar.batal');
+
+    Route::get('/farmasi', [FarmasiController::class, 'tagihanFarmasi'])
+    ->name('farmasi.index') // <-- Beri nama agar mudah dipanggil
+    ->middleware('auth');
