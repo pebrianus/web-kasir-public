@@ -9,7 +9,7 @@
         // DATA DUMMY TAGIHAN FARMASI
         // ==============================
         $pasienList = collect([
-            (object)[
+            (object) [
                 'NOMOR' => 'TRX000001',
                 'NAMA' => 'Budi Santoso',
                 'OBAT' => [
@@ -19,7 +19,7 @@
                 'TANGGAL' => '2026-02-18 10:15:00',
                 'HARGA' => 85000,
             ],
-            (object)[
+            (object) [
                 'NOMOR' => 'TRX000002',
                 'NAMA' => 'Siti Aminah',
                 'OBAT' => [
@@ -30,6 +30,8 @@
                 'HARGA' => 125000,
             ],
         ]);
+
+        $statusFilter = 'proses'; // Default ke 'proses'
     @endphp
 
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -43,8 +45,35 @@
             <div class="card shadow mb-4">
 
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Daftar Tagihan Farmasi</h6>
+                    <div class="d-flex justify-content-between align-items-center">
+
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            Daftar Tagihan Farmasi
+                        </h6>
+
+                        <div class="dropdown">
+                            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-toggle="dropdown"
+                                aria-haspopup="true" aria-expanded="false">
+                                Filter:
+                                <strong>
+                                    {{ $statusFilter == 'proses' ? 'Belum Selesai' : 'Selesai' }}
+                                </strong>
+                            </button>
+
+                            <div class="dropdown-menu dropdown-menu-right">
+                                <a class="dropdown-item {{ $statusFilter == 'proses' ? 'active' : '' }}" href="#">
+                                    Belum Selesai
+                                </a>
+
+                                <a class="dropdown-item {{ $statusFilter == 'selesai' ? 'active' : '' }}" href="#">
+                                    Selesai
+                                </a>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
+
 
                 <div class="card-body">
                     <div class="table-responsive">
@@ -83,9 +112,9 @@
                                         </td>
 
                                         <td>
-                                            <button class="btn btn-sm btn-primary">
+                                            <a href="{{ route('farmasi.show', $item->NOMOR) }}" class="btn btn-sm btn-primary">
                                                 Buka
-                                            </button>
+                                            </a>
                                         </td>
                                     </tr>
                                 @empty

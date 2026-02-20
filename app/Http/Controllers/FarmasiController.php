@@ -59,11 +59,16 @@ class FarmasiController extends Controller
             ->orderBy('p.TANGGAL', 'desc')
             ->paginate(10);
 
-        // dd($data->toArray());
+        dd($data->toArray());
 
         return view('farmasi.index', compact('data'));
     }
 
+    public function showTagihanFarmasi($id)
+    {
+
+        return view('farmasi.show');
+    }
 
 
 
