@@ -5,31 +5,7 @@
 @section('content')
 
     @php
-        // ==============================
-        // DATA DUMMY TAGIHAN FARMASI
-        // ==============================
-        $pasienList = collect([
-            (object) [
-                'NOMOR' => 'TRX000001',
-                'NAMA' => 'Budi Santoso',
-                'OBAT' => [
-                    ['nama' => 'Paracetamol 60ML', 'qty' => 1],
-                    ['nama' => 'Amoxicillin 500mg', 'qty' => 10],
-                ],
-                'TANGGAL' => '2026-02-18 10:15:00',
-                'HARGA' => 85000,
-            ],
-            (object) [
-                'NOMOR' => 'TRX000002',
-                'NAMA' => 'Siti Aminah',
-                'OBAT' => [
-                    ['nama' => 'OBH Combi', 'qty' => 2],
-                    ['nama' => 'Vitamin C 1000mg', 'qty' => 5],
-                ],
-                'TANGGAL' => '2026-02-19 09:30:00',
-                'HARGA' => 125000,
-            ],
-        ]);
+
 
         $statusFilter = 'proses'; // Default ke 'proses'
     @endphp
@@ -89,16 +65,28 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse ($pasienList as $item)
+                                @forelse ($data as $item)
+
+                                    @php
+                                        $totalHarga = 0;
+                                    @endphp
+
                                     <tr>
                                         <td>{{ $item->NOMOR }}</td>
-                                        <td>{{ $item->NAMA }}</td>
+                                        <td>{{ $item->PENGUNJUNG }}</td>
 
                                         {{-- Kolom Obat --}}
                                         <td>
                                             @foreach($item->OBAT as $obat)
+
+                                                @php
+                                                    $subtotal = (float) $obat->JUMLAH * (float) $obat->HARGA_JUAL_BARANG;
+                                                    $totalHarga += $subtotal;
+                                                @endphp
+
                                                 <div>
-                                                    {{ $obat['nama'] }} - {{ $obat['qty'] }}
+                                                    {{ $obat->NAMA_BARANG }}
+                                                    ({{ rtrim(rtrim($obat->JUMLAH, '0'), '.') }})
                                                 </div>
                                             @endforeach
                                         </td>
@@ -108,7 +96,7 @@
                                         </td>
 
                                         <td>
-                                            Rp {{ number_format($item->HARGA, 0, ',', '.') }}
+                                            Rp {{ number_format($totalHarga, 0, ',', '.') }}
                                         </td>
 
                                         <td>
@@ -117,6 +105,7 @@
                                             </a>
                                         </td>
                                     </tr>
+
                                 @empty
                                     <tr>
                                         <td colspan="6" class="text-center">
@@ -126,6 +115,9 @@
                                 @endforelse
                             </tbody>
                         </table>
+                        <div class="mt-3">
+                            {{ $data->links() }}
+                        </div>
                     </div>
                 </div>
 

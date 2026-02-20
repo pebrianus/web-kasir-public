@@ -4,32 +4,6 @@
 
 @section('content')
 
-    @php
-        // ==============================
-        // DATA DUMMY DETAIL TAGIHAN
-        // ==============================
-        $tagihan = (object) [
-            'NOMOR' => 'TRX000001',
-            'NAMA' => 'Budi Santoso',
-            'TANGGAL' => '2026-02-18 10:15:00',
-            'STATUS' => 'Belum Lunas',
-            'DETAIL' => [
-                (object) [
-                    'nama_obat' => 'Paracetamol 60ML',
-                    'qty' => 1,
-                    'harga' => 25000,
-                ],
-                (object) [
-                    'nama_obat' => 'Amoxicillin 500mg',
-                    'qty' => 10,
-                    'harga' => 6000,
-                ],
-            ],
-        ];
-
-        $total = 0;
-    @endphp
-
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">
             Detail Tagihan Farmasi
@@ -49,17 +23,20 @@
                     <div class="row">
                         <div class="col-md-6">
                             <p><strong>No. Transaksi:</strong> {{ $tagihan->NOMOR }}</p>
-                            <p><strong>Nama Pasien:</strong> {{ $tagihan->NAMA }}</p>
-                            <p><strong>Nama Dokter:</strong> Pebri Dokter IGD</p>
+                            <p><strong>Nama Pasien:</strong> {{ $tagihan->PENGUNJUNG }}</p>
+                            <p><strong>Nama Dokter:</strong> - </p>
                         </div>
+
                         <div class="col-md-6">
-                            <p><strong>Tanggal:</strong>
+                            <p>
+                                <strong>Tanggal:</strong>
                                 {{ \Carbon\Carbon::parse($tagihan->TANGGAL)->format('d-m-Y H:i') }}
                             </p>
+
                             <p>
                                 <strong>Status:</strong>
-                                <span class="badge badge-{{ $tagihan->STATUS == 'Belum Lunas' ? 'warning' : 'success' }}">
-                                    {{ $tagihan->STATUS }}
+                                <span class="badge badge-warning">
+                                    Belum Lunas
                                 </span>
                             </p>
                         </div>
@@ -77,6 +54,7 @@
 
                 <div class="card-body">
                     <div class="table-responsive">
+
                         <table class="table table-bordered" width="100%">
                             <thead>
                                 <tr>
@@ -86,24 +64,46 @@
                                     <th width="150" class="text-right">Subtotal</th>
                                 </tr>
                             </thead>
+
                             <tbody>
-                                @foreach($tagihan->DETAIL as $item)
+
+                                @php $total = 0; @endphp
+
+                                @forelse($tagihan->OBAT as $item)
+
                                     @php
-                                        $subtotal = $item->qty * $item->harga;
+                                        $qty = (float) $item->JUMLAH;
+                                        $harga = (float) $item->HARGA_JUAL_BARANG;
+                                        $subtotal = $qty * $harga;
                                         $total += $subtotal;
                                     @endphp
+
                                     <tr>
-                                        <td>{{ $item->nama_obat }}</td>
-                                        <td class="text-center">{{ $item->qty }}</td>
-                                        <td class="text-right">
-                                            Rp {{ number_format($item->harga, 0, ',', '.') }}
+                                        <td>{{ $item->NAMA_BARANG }}</td>
+
+                                        <td class="text-center">
+                                            {{ rtrim(rtrim($item->JUMLAH, '0'), '.') }}
                                         </td>
+
+                                        <td class="text-right">
+                                            Rp {{ number_format($harga, 0, ',', '.') }}
+                                        </td>
+
                                         <td class="text-right">
                                             Rp {{ number_format($subtotal, 0, ',', '.') }}
                                         </td>
                                     </tr>
-                                @endforeach
+
+                                @empty
+                                    <tr>
+                                        <td colspan="4" class="text-center">
+                                            Tidak ada detail obat
+                                        </td>
+                                    </tr>
+                                @endforelse
+
                             </tbody>
+
                             <tfoot>
                                 <tr class="bg-light">
                                     <th colspan="3" class="text-right">TOTAL</th>
@@ -112,25 +112,18 @@
                                     </th>
                                 </tr>
                             </tfoot>
+
                         </table>
 
-                        <div class="card-body text-right">
-                            @if($tagihan->STATUS == 'Belum Lunas')
-                                <button class="btn btn-success">
-                                    Proses Pembayaran
-                                </button>
-                            @else
-                                <button class="btn btn-secondary">
-                                    Cetak Struk
-                                </button>
-                            @endif
-
+                        <div class="text-right mt-3">
+                            <button class="btn btn-success">
+                                Proses Pembayaran
+                            </button>
                         </div>
+
                     </div>
                 </div>
             </div>
-
-
 
         </div>
     </div>
