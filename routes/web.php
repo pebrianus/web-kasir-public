@@ -170,3 +170,7 @@ Route::get('/farmasi', [FarmasiController::class, 'tagihanFarmasi'])
 Route::get('/farmasi/{id}', [FarmasiController::class, 'showTagihanFarmasi'])
     ->name('farmasi.show')
     ->middleware('auth');
+
+    Route::get('/farmasi/{id}/cetakKuitansi', [FarmasiController::class, 'cetakKuitansiFarmasi'])
+    ->name('farmasi.cetakKuitansi')
+    ->middleware('auth');

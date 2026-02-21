@@ -24,7 +24,10 @@
                         <div class="col-md-6">
                             <p><strong>No. Transaksi:</strong> {{ $tagihan->NOMOR }}</p>
                             <p><strong>Nama Pasien:</strong> {{ $tagihan->PENGUNJUNG }}</p>
-                            <p><strong>Nama Dokter:</strong> - </p>
+                            <p>
+                                <strong>Nama Dokter:</strong>
+                                {{ !empty($tagihan->DOKTER) ? $tagihan->DOKTER : '-' }}
+                            </p>
                         </div>
 
                         <div class="col-md-6">
@@ -53,72 +56,78 @@
                 </div>
 
                 <div class="card-body">
-                    <div class="table-responsive">
+                    <div class="row">
 
-                        <table class="table table-bordered" width="100%">
-                            <thead>
-                                <tr>
-                                    <th>Nama Obat</th>
-                                    <th width="100" class="text-center">Qty</th>
-                                    <th width="150" class="text-right">Harga</th>
-                                    <th width="150" class="text-right">Subtotal</th>
-                                </tr>
-                            </thead>
+                        {{-- KOLOM TABEL --}}
+                        <div class="col-md-9">
+                            <div class="table-responsive">
+                                <table class="table table-bordered" width="100%">
+                                    <thead>
+                                        <tr>
+                                            <th>Nama Obat</th>
+                                            <th width="100" class="text-center">Qty</th>
+                                            <th width="150" class="text-right">Harga</th>
+                                            <th width="150" class="text-right">Subtotal</th>
+                                        </tr>
+                                    </thead>
 
-                            <tbody>
+                                    <tbody>
+                                        @php $total = 0; @endphp
 
-                                @php $total = 0; @endphp
+                                        @forelse($tagihan->OBAT as $item)
+                                            @php
+                                                $qty = (float) $item->JUMLAH;
+                                                $harga = (float) $item->HARGA_JUAL_BARANG;
+                                                $subtotal = $qty * $harga;
+                                                $total += $subtotal;
+                                            @endphp
 
-                                @forelse($tagihan->OBAT as $item)
+                                            <tr>
+                                                <td>{{ $item->NAMA_BARANG }}</td>
+                                                <td class="text-center">
+                                                    {{ rtrim(rtrim($item->JUMLAH, '0'), '.') }}
+                                                </td>
+                                                <td class="text-right">
+                                                    Rp {{ number_format($harga, 0, ',', '.') }}
+                                                </td>
+                                                <td class="text-right">
+                                                    Rp {{ number_format($subtotal, 0, ',', '.') }}
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="4" class="text-center">
+                                                    Tidak ada detail obat
+                                                </td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
 
-                                    @php
-                                        $qty = (float) $item->JUMLAH;
-                                        $harga = (float) $item->HARGA_JUAL_BARANG;
-                                        $subtotal = $qty * $harga;
-                                        $total += $subtotal;
-                                    @endphp
+                                    <tfoot>
+                                        <tr class="bg-light">
+                                            <th colspan="3" class="text-right">TOTAL</th>
+                                            <th class="text-right">
+                                                Rp {{ number_format($total, 0, ',', '.') }}
+                                            </th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
 
-                                    <tr>
-                                        <td>{{ $item->NAMA_BARANG }}</td>
+                        {{-- KOLOM TOMBOL --}}
+                        <div class="col-md-3 d-flex flex-column align-items-end">
 
-                                        <td class="text-center">
-                                            {{ rtrim(rtrim($item->JUMLAH, '0'), '.') }}
-                                        </td>
-
-                                        <td class="text-right">
-                                            Rp {{ number_format($harga, 0, ',', '.') }}
-                                        </td>
-
-                                        <td class="text-right">
-                                            Rp {{ number_format($subtotal, 0, ',', '.') }}
-                                        </td>
-                                    </tr>
-
-                                @empty
-                                    <tr>
-                                        <td colspan="4" class="text-center">
-                                            Tidak ada detail obat
-                                        </td>
-                                    </tr>
-                                @endforelse
-
-                            </tbody>
-
-                            <tfoot>
-                                <tr class="bg-light">
-                                    <th colspan="3" class="text-right">TOTAL</th>
-                                    <th class="text-right">
-                                        Rp {{ number_format($total, 0, ',', '.') }}
-                                    </th>
-                                </tr>
-                            </tfoot>
-
-                        </table>
-
-                        <div class="text-right mt-3">
-                            <button class="btn btn-success">
+                            <button class="btn btn-success mb-2">
+                                <i class="fas fa-cash-register mr-1"></i>
                                 Proses Pembayaran
                             </button>
+
+                            <a href="{{ route('farmasi.cetakKuitansi', $tagihan->NOMOR) }}" class="btn btn-primary" target="_blank">
+                                <i class="fas fa-print mr-1"></i>
+                                Cetak
+                            </a>
+
                         </div>
 
                     </div>
