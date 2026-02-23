@@ -163,6 +163,7 @@ Route::middleware(['auth'])->group(function () {
 Route::post('/kasir/tagihan/{id}/batal', [App\Http\Controllers\KasirController::class, 'batalPembayaran'])
     ->name('kasir.bayar.batal');
 
+// Route Kasir Farmasi
 Route::get('/farmasi', [FarmasiController::class, 'tagihanFarmasi'])
     ->name('farmasi.index') // <-- Beri nama agar mudah dipanggil
     ->middleware('auth');
@@ -171,6 +172,9 @@ Route::get('/farmasi/{id}', [FarmasiController::class, 'showTagihanFarmasi'])
     ->name('farmasi.show')
     ->middleware('auth');
 
-    Route::get('/farmasi/{id}/cetakKuitansi', [FarmasiController::class, 'cetakKuitansiFarmasi'])
+Route::get('/farmasi/{id}/cetakKuitansi', [FarmasiController::class, 'cetakKuitansiFarmasi'])
     ->name('farmasi.cetakKuitansi')
     ->middleware('auth');
+
+Route::post('/farmasi/{id}/bayar', [FarmasiController::class, 'prosesPembayaran'])
+    ->name('farmasi.bayar');

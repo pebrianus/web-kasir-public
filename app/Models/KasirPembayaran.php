@@ -15,10 +15,17 @@ class KasirPembayaran extends Model
     // Kolom yang boleh diisi
     protected $fillable = [
         'kasir_tagihan_head_id',
+        'kasir_penjualan_head_id',
         'user_id',
         'metode_bayar_id',
         'nominal_bayar',
         'kasir_sesi_id',
         'deleted_at'
     ];
+
+    // Relasi ke Tagihan Penjualan (Farmasi)
+    public function penjualanHead()
+    {
+        return $this->belongsTo(KasirPenjualanHead::class, 'kasir_penjualan_head_id');
+    }
 }

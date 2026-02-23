@@ -4,12 +4,6 @@
 
 @section('content')
 
-    @php
-
-
-        $statusFilter = 'proses'; // Default ke 'proses'
-    @endphp
-
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">
             Kasir Farmasi
@@ -37,11 +31,13 @@
                             </button>
 
                             <div class="dropdown-menu dropdown-menu-right">
-                                <a class="dropdown-item {{ $statusFilter == 'proses' ? 'active' : '' }}" href="#">
+                                <a class="dropdown-item {{ $statusFilter == 'proses' ? 'active' : '' }}"
+                                    href="{{ route('farmasi.index', ['status' => 'proses']) }}">
                                     Belum Selesai
                                 </a>
 
-                                <a class="dropdown-item {{ $statusFilter == 'selesai' ? 'active' : '' }}" href="#">
+                                <a class="dropdown-item {{ $statusFilter == 'selesai' ? 'active' : '' }}"
+                                    href="{{ route('farmasi.index', ['status' => 'selesai']) }}">
                                     Selesai
                                 </a>
                             </div>
@@ -58,7 +54,6 @@
                                 <tr>
                                     <th>Nomor</th>
                                     <th>Nama</th>
-                                    <th>Obat</th>
                                     <th>Tanggal</th>
                                     <th>Harga</th>
                                     <th width="120">Aksi</th>
@@ -66,49 +61,26 @@
                             </thead>
                             <tbody>
                                 @forelse ($data as $item)
-
-                                    @php
-                                        $totalHarga = 0;
-                                    @endphp
-
                                     <tr>
-                                        <td>{{ $item->NOMOR }}</td>
-                                        <td>{{ $item->PENGUNJUNG }}</td>
-
-                                        {{-- Kolom Obat --}}
+                                        {{-- Variabel diseragamkan dengan field di database lokal --}}
+                                        <td>{{ $item->simgos_penjualan_id }}</td>
+                                        <td>{{ $item->nama_pengunjung }}</td>
                                         <td>
-                                            @foreach($item->OBAT as $obat)
-
-                                                @php
-                                                    $subtotal = (float) $obat->JUMLAH * (float) $obat->HARGA_JUAL_BARANG;
-                                                    $totalHarga += $subtotal;
-                                                @endphp
-
-                                                <div>
-                                                    {{ $obat->NAMA_BARANG }}
-                                                    ({{ rtrim(rtrim($obat->JUMLAH, '0'), '.') }})
-                                                </div>
-                                            @endforeach
+                                            {{ \Carbon\Carbon::parse($item->simgos_tanggal)->format('d-m-Y H:i') }}
                                         </td>
-
                                         <td>
-                                            {{ \Carbon\Carbon::parse($item->TANGGAL)->format('d-m-Y H:i') }}
+                                            Rp {{ number_format($item->total_tagihan, 0, ',', '.') }}
                                         </td>
-
                                         <td>
-                                            Rp {{ number_format($totalHarga, 0, ',', '.') }}
-                                        </td>
-
-                                        <td>
-                                            <a href="{{ route('farmasi.show', $item->NOMOR) }}" class="btn btn-sm btn-primary">
+                                            <a href="{{ route('farmasi.show', $item->simgos_penjualan_id) }}"
+                                                class="btn btn-sm btn-primary">
                                                 Buka
                                             </a>
                                         </td>
                                     </tr>
-
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="text-center">
+                                        <td colspan="5" class="text-center">
                                             Data tidak ditemukan
                                         </td>
                                     </tr>
@@ -116,7 +88,7 @@
                             </tbody>
                         </table>
                         <div class="mt-3">
-                            {{ $data->links() }}
+                            {{ $data->appends(['status' => $statusFilter])->links() }}
                         </div>
                     </div>
                 </div>

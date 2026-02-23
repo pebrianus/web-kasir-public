@@ -22,25 +22,27 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <p><strong>No. Transaksi:</strong> {{ $tagihan->NOMOR }}</p>
-                            <p><strong>Nama Pasien:</strong> {{ $tagihan->PENGUNJUNG }}</p>
+                            <p><strong>No. Transaksi:</strong> {{ $tagihan->simgos_penjualan_id }}</p>
+                            <p><strong>Nama Pasien:</strong> {{ $tagihan->nama_pengunjung }}</p>
                             <p>
                                 <strong>Nama Dokter:</strong>
-                                {{ !empty($tagihan->DOKTER) ? $tagihan->DOKTER : '-' }}
+                                {{ !empty($tagihan->nama_dokter) ? $tagihan->nama_dokter : '-' }}
                             </p>
                         </div>
 
                         <div class="col-md-6">
                             <p>
                                 <strong>Tanggal:</strong>
-                                {{ \Carbon\Carbon::parse($tagihan->TANGGAL)->format('d-m-Y H:i') }}
+                                {{ \Carbon\Carbon::parse($tagihan->simgos_tanggal)->format('d-m-Y H:i') }}
                             </p>
 
                             <p>
                                 <strong>Status:</strong>
-                                <span class="badge badge-warning">
-                                    Belum Lunas
-                                </span>
+                                @if ($tagihan->status_kasir == 'lunas')
+                                    <span class="badge badge-success">Selesai / Lunas</span>
+                                @else
+                                    <span class="badge badge-warning">Belum Lunas</span>
+                                @endif
                             </p>
                         </div>
                     </div>
@@ -72,26 +74,17 @@
                                     </thead>
 
                                     <tbody>
-                                        @php $total = 0; @endphp
-
-                                        @forelse($tagihan->OBAT as $item)
-                                            @php
-                                                $qty = (float) $item->JUMLAH;
-                                                $harga = (float) $item->HARGA_JUAL_BARANG;
-                                                $subtotal = $qty * $harga;
-                                                $total += $subtotal;
-                                            @endphp
-
+                                        @forelse($tagihan->details as $item)
                                             <tr>
-                                                <td>{{ $item->NAMA_BARANG }}</td>
+                                                <td>{{ $item->nama_barang }}</td>
                                                 <td class="text-center">
-                                                    {{ rtrim(rtrim($item->JUMLAH, '0'), '.') }}
+                                                    {{ rtrim(rtrim($item->qty, '0'), '.') }}
                                                 </td>
                                                 <td class="text-right">
-                                                    Rp {{ number_format($harga, 0, ',', '.') }}
+                                                    Rp {{ number_format($item->harga_satuan, 0, ',', '.') }}
                                                 </td>
                                                 <td class="text-right">
-                                                    Rp {{ number_format($subtotal, 0, ',', '.') }}
+                                                    Rp {{ number_format($item->subtotal, 0, ',', '.') }}
                                                 </td>
                                             </tr>
                                         @empty
@@ -107,7 +100,7 @@
                                         <tr class="bg-light">
                                             <th colspan="3" class="text-right">TOTAL</th>
                                             <th class="text-right">
-                                                Rp {{ number_format($total, 0, ',', '.') }}
+                                                Rp {{ number_format($tagihan->total_tagihan, 0, ',', '.') }}
                                             </th>
                                         </tr>
                                     </tfoot>
@@ -118,12 +111,17 @@
                         {{-- KOLOM TOMBOL --}}
                         <div class="col-md-3 d-flex flex-column align-items-end">
 
-                            <button class="btn btn-success mb-2">
-                                <i class="fas fa-cash-register mr-1"></i>
-                                Proses Pembayaran
-                            </button>
+                            {{-- Tombol bayar disembunyikan sementara jika lunas --}}
+                            @if ($tagihan->status_kasir != 'lunas')
+                                <button type="button" class="btn btn-success mb-2" data-toggle="modal"
+                                    data-target="#modalBayar">
+                                    <i class="fas fa-cash-register mr-1"></i>
+                                    Proses Pembayaran
+                                </button>
+                            @endif
 
-                            <a href="{{ route('farmasi.cetakKuitansi', $tagihan->NOMOR) }}" class="btn btn-primary" target="_blank">
+                            <a href="{{ route('farmasi.cetakKuitansi', $tagihan->simgos_penjualan_id) }}"
+                                class="btn btn-primary" target="_blank">
                                 <i class="fas fa-print mr-1"></i>
                                 Cetak
                             </a>
@@ -134,6 +132,51 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+    <div class="modal fade" id="modalBayar" tabindex="-1" role="dialog" aria-labelledby="modalBayarLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title font-weight-bold text-success" id="modalBayarLabel">
+                        <i class="fas fa-question-circle mr-1"></i> Konfirmasi Pembayaran
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+
+                <form action="{{ route('farmasi.bayar', $tagihan->simgos_penjualan_id) }}" method="POST">
+                    @csrf
+                    <div class="modal-body">
+                        <p class="mb-4 text-gray-800">Apakah data penjualan sudah benar?</p>
+
+                        <table class="table table-borderless table-sm">
+                            <tr>
+                                <th width="30%" class="text-left">Nama</th>
+                                <td width="5%">:</td>
+                                <td><strong>{{ $tagihan->nama_pengunjung }}</strong></td>
+                            </tr>
+                            <tr>
+                                <th class="text-left">Total</th>
+                                <td>:</td>
+                                <td>
+                                    <strong class="text-success" style="font-size: 1.2rem;">
+                                        Rp {{ number_format($tagihan->total_tagihan, 0, ',', '.') }}
+                                    </strong>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check mr-1"></i> Ya, Proses Pembayaran
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
