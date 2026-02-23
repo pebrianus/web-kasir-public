@@ -10,7 +10,7 @@
         </h1>
 
         <a href="{{ route('farmasi.index') }}" class="btn btn-danger btn-sm">
-            Kembali
+            <i class="fas fa-times"></i>
         </a>
     </div>
 
@@ -40,6 +40,9 @@
                                 <strong>Status:</strong>
                                 <span class="badge badge-warning">
                                     Belum Lunas
+                                </span>
+                                <span class="badge badge-success">
+                                    Lunas
                                 </span>
                             </p>
                         </div>
@@ -123,7 +126,8 @@
                                 Proses Pembayaran
                             </button>
 
-                            <a href="{{ route('farmasi.cetakKuitansi', $tagihan->NOMOR) }}" class="btn btn-primary" target="_blank">
+                            <a href="{{ route('farmasi.cetakKuitansi', $tagihan->NOMOR) }}" class="btn btn-primary"
+                                target="_blank">
                                 <i class="fas fa-print mr-1"></i>
                                 Cetak
                             </a>
