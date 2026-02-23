@@ -10,7 +10,7 @@
         </h1>
 
         <a href="{{ route('farmasi.index') }}" class="btn btn-danger btn-sm">
-            Kembali
+            <i class="fas fa-times"></i>
         </a>
     </div>
 

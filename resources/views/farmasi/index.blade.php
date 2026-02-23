@@ -87,14 +87,22 @@
                                 @endforelse
                             </tbody>
                         </table>
-                        <div class="mt-3">
-                            {{ $data->appends(['status' => $statusFilter])->links() }}
-                        </div>
-                    </div>
-                </div>
+                        @if ($data->hasPages() || $data->total() > 0)
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <div class="text-muted small">
+                                    Menampilkan {{ $data->firstItem() ?? 0 }} - {{ $data->lastItem() ?? 0 }} dari
+                                    {{ $data->total() }} data
+                                </div>
+                                <div>
+                                    {{ $data->appends(['status' => $statusFilter])->links() }}
+                                </div>
+                            </div>
+                        @endif
 
+                    </div>
+
+                </div>
             </div>
         </div>
-    </div>
 
-@endsection
+    @endsection
