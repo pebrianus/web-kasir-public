@@ -9,6 +9,7 @@
             3 => 'Rawat Inap',
             4 => 'Laboratorium',
             5 => 'Radiologi',
+            6 => 'Farmasi',
         ];
 
         $jenis_kasir = request('jenis');

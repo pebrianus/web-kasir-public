@@ -143,10 +143,12 @@ class FarmasiController extends Controller
 
         // 3. CEK SESI KASIR AKTIF
         // Kita cari sesi kasir yang sedang 'BUKA' dan dimiliki oleh user yang sedang login
-        $sesiAktif = KasirSesi::where('status', 'BUKA')->where('dibuka_oleh_user_id', Auth::id())->first();
-
+        $sesiAktif = KasirSesi::where('status', 'BUKA')
+            ->where('dibuka_oleh_user_id', Auth::id())
+            ->where('jenis_kasir', 6)
+            ->first();
         if (!$sesiAktif) {
-            return redirect()->back()->with('error', 'Sesi kasir belum dibuka! Silakan buka sesi kasir di Dashboard terlebih dahulu.');
+            return redirect()->back()->with('error', 'Sesi kasir belum dibuka! Silakan buka sesi kasir terlebih dahulu.');
         }
 
         // 4. CATAT KE TABEL PEMBAYARAN PUSAT

@@ -1272,7 +1272,7 @@ class KasirController extends Controller
         // mapping role ke jenis kasir
         $mapJenisKasir = [
             1 => [1], // role 1 -> kasir jenis 1
-            2 => [2, 3, 4, 5], // role 2 -> kasir jenis 2, 3, 4, dan 5
+            2 => [2, 3, 4, 5, 6], // role 2 -> kasir jenis 2, 3, 4, 5, dan 6 (Farmasi)
         ];
 
         if (!isset($mapJenisKasir[$roleId])) {
@@ -1310,7 +1310,7 @@ class KasirController extends Controller
         // Mapping role ke jenis kasir yang harus ditutup
         $mapJenisKasir = [
             1 => [1], // role 1 -> kasir jenis 1
-            2 => [2, 3, 4, 5], // role 2 -> kasir jenis 2, 3, 4, dan 5
+            2 => [2, 3, 4, 5, 6], // role 2 -> kasir jenis 2, 3, 4, 5, dan 6 (Farmasi)
         ];
 
         if (!isset($mapJenisKasir[$roleId])) {

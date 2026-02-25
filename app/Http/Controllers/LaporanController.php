@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\KasirPembayaran;
+use App\Models\KasirPenjualanHead;
 use Illuminate\Http\Request;
 use App\Models\KasirSesi;
 use App\Models\KasirTagihanHead;
@@ -73,21 +74,42 @@ class LaporanController extends Controller
             ->when($jenis, fn($q) => $q->where('jenis_kasir', $jenis))
             ->firstOrFail();
 
-        $daftarTransaksi = KasirTagihanHead::select(
-            'kasir_tagihan_head.simgos_norm as norm',
-            'kasir_tagihan_head.nama_pasien as nama',
-            'kasir_tagihan_head.simgos_tagihan_id as no_tagihan',
-            'kasir_tagihan_head.total_bayar_pasien as tunai',
-            'kasir_tagihan_head.total_bayar_asuransi as piutang',
-            'kasir_pembayaran.created_at as waktu_bayar'
-        )
-            ->join('kasir_pembayaran', function ($join) {
-                $join->on('kasir_pembayaran.kasir_tagihan_head_id', '=', 'kasir_tagihan_head.id')
-                    ->whereNull('kasir_pembayaran.deleted_at');     // ⬅️ Filter soft delete
-            })
-            ->where('kasir_pembayaran.kasir_sesi_id', $sesi->id)
-            ->orderBy('kasir_pembayaran.created_at', 'asc')
-            ->get();
+        if ($jenis == 6) {
+
+            $daftarTransaksi = KasirPenjualanHead::select(
+                DB::raw("'-' as norm"), // Tidak ada No RM
+                'kasir_penjualan_heads.nama_pengunjung as nama',
+                'kasir_penjualan_heads.simgos_penjualan_id as no_tagihan',
+                'kasir_penjualan_heads.total_tagihan as tunai', // Anggap tunai
+                DB::raw("0 as piutang"), // Tidak ada asuransi
+                'kasir_pembayaran.created_at as waktu_bayar'
+            )
+                ->join('kasir_pembayaran', function ($join) {
+                    $join->on('kasir_pembayaran.kasir_penjualan_head_id', '=', 'kasir_penjualan_heads.id')
+                        ->whereNull('kasir_pembayaran.deleted_at');
+                })
+                ->where('kasir_pembayaran.kasir_sesi_id', $sesi->id)
+                ->orderBy('kasir_pembayaran.created_at', 'asc')
+                ->get();
+
+        } else {
+
+            $daftarTransaksi = KasirTagihanHead::select(
+                'kasir_tagihan_head.simgos_norm as norm',
+                'kasir_tagihan_head.nama_pasien as nama',
+                'kasir_tagihan_head.simgos_tagihan_id as no_tagihan',
+                'kasir_tagihan_head.total_bayar_pasien as tunai',
+                'kasir_tagihan_head.total_bayar_asuransi as piutang',
+                'kasir_pembayaran.created_at as waktu_bayar'
+            )
+                ->join('kasir_pembayaran', function ($join) {
+                    $join->on('kasir_pembayaran.kasir_tagihan_head_id', '=', 'kasir_tagihan_head.id')
+                        ->whereNull('kasir_pembayaran.deleted_at');
+                })
+                ->where('kasir_pembayaran.kasir_sesi_id', $sesi->id)
+                ->orderBy('kasir_pembayaran.created_at', 'asc')
+                ->get();
+        }
 
         $totals = [
             'total_tunai' => $daftarTransaksi->sum('tunai'),
@@ -105,36 +127,59 @@ class LaporanController extends Controller
 
     public function cetakLaporanSesi(Request $request, $id)
     {
-        // Ambil parameter ?jenis=1/2/3
         $jenis_kasir = $request->input('jenis');
 
         $jenisList = [
             1 => 'Rawat Jalan',
             2 => 'IGD',
             3 => 'Rawat Inap',
+            4 => 'Laboratorium',
+            5 => 'Radiologi',
+            6 => 'Farmasi',
         ];
 
         $jenis_kasir_text = $jenisList[$jenis_kasir] ?? 'Tidak diketahui';
 
-        // Data sesi
         $sesi = KasirSesi::findOrFail($id);
 
-        $daftarTransaksi = KasirTagihanHead::select(
-            'kasir_tagihan_head.simgos_norm as norm',
-            'kasir_tagihan_head.nama_pasien as nama',
-            'kasir_tagihan_head.simgos_tagihan_id as no_tagihan',
-            'kasir_tagihan_head.total_bayar_pasien as tunai',
-            'kasir_tagihan_head.total_bayar_asuransi as piutang',
-            'kasir_pembayaran.created_at as waktu_bayar'
-        )
-            ->join('kasir_pembayaran', function ($join) {
-                $join->on('kasir_pembayaran.kasir_tagihan_head_id', '=', 'kasir_tagihan_head.id')
-                    ->whereNull('kasir_pembayaran.deleted_at');    // ⬅️ filter soft delete
-            })
-            ->where('kasir_pembayaran.kasir_sesi_id', $id)
-            ->distinct()
-            ->orderBy('kasir_pembayaran.created_at', 'asc')
-            ->get();
+        if ($jenis_kasir == 6) {
+
+            // ✅ Farmasi → pakai kasir_penjualan_heads
+            $daftarTransaksi = KasirPenjualanHead::select(
+                DB::raw("'-' as norm"), // Tidak ada No RM
+                'kasir_penjualan_heads.nama_pengunjung as nama',
+                'kasir_penjualan_heads.simgos_penjualan_id as no_tagihan',
+                'kasir_penjualan_heads.total_tagihan as tunai',
+                DB::raw("0 as piutang"), // Tidak ada asuransi
+                'kasir_pembayaran.created_at as waktu_bayar'
+            )
+                ->join('kasir_pembayaran', function ($join) {
+                    $join->on('kasir_pembayaran.kasir_penjualan_head_id', '=', 'kasir_penjualan_heads.id')
+                        ->whereNull('kasir_pembayaran.deleted_at');
+                })
+                ->where('kasir_pembayaran.kasir_sesi_id', $id)
+                ->orderBy('kasir_pembayaran.created_at', 'asc')
+                ->get();
+
+        } else {
+
+            // ✅ Selain Farmasi → pakai kasir_tagihan_head
+            $daftarTransaksi = KasirTagihanHead::select(
+                'kasir_tagihan_head.simgos_norm as norm',
+                'kasir_tagihan_head.nama_pasien as nama',
+                'kasir_tagihan_head.simgos_tagihan_id as no_tagihan',
+                'kasir_tagihan_head.total_bayar_pasien as tunai',
+                'kasir_tagihan_head.total_bayar_asuransi as piutang',
+                'kasir_pembayaran.created_at as waktu_bayar'
+            )
+                ->join('kasir_pembayaran', function ($join) {
+                    $join->on('kasir_pembayaran.kasir_tagihan_head_id', '=', 'kasir_tagihan_head.id')
+                        ->whereNull('kasir_pembayaran.deleted_at');
+                })
+                ->where('kasir_pembayaran.kasir_sesi_id', $id)
+                ->orderBy('kasir_pembayaran.created_at', 'asc')
+                ->get();
+        }
 
         $totals = [
             'total_tunai' => $daftarTransaksi->sum('tunai'),
@@ -142,7 +187,6 @@ class LaporanController extends Controller
             'total_subsidi' => 0,
         ];
 
-        // Kirim ke view PDF
         $dataUntukView = [
             'sesi' => $sesi,
             'daftarTransaksi' => $daftarTransaksi,
@@ -151,7 +195,6 @@ class LaporanController extends Controller
         ];
 
         $pdf = PDF::loadView('reports.laporan-sesi-pdf', $dataUntukView);
-
         $pdf->setPaper('a4', 'landscape');
 
         return $pdf->stream('laporan-sesi-' . $sesi->id . '.pdf');

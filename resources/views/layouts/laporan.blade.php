@@ -39,6 +39,10 @@
                                         {{ request('jenis') == 5 ? 'active' : '' }}">
                             Laporan Penerimaan Radiologi
                         </a>
+                        <a href="{{ route('laporan.penerimaan.index', ['jenis' => 6]) }}" class="list-group-item list-group-item-action
+                                        {{ request('jenis') == 6 ? 'active' : '' }}">
+                            Laporan Penerimaan Farmasi
+                        </a>
 
 
                     @endif
