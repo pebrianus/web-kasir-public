@@ -223,4 +223,36 @@ class FarmasiController extends Controller
 
         return $pdf->stream('kuitansi-farmasi-' . $header->NOMOR . '.pdf');
     }
+
+    public function batalPembayaranFarmasi(Request $request, $id)
+    {
+        // $id adalah simgos_penjualan_id (string)
+        $penjualanHead = KasirPenjualanHead::where('simgos_penjualan_id', $id)
+            ->where('status_kasir', 'lunas')
+            ->first();
+
+        if (!$penjualanHead) {
+            return redirect()
+                ->route('farmasi.show', $id)
+                ->with('error', 'Transaksi tidak ditemukan atau statusnya belum lunas.');
+        }
+
+        DB::transaction(function () use ($penjualanHead) {
+
+            // Soft delete pembayaran
+            KasirPembayaran::where('kasir_penjualan_head_id', $penjualanHead->id)
+                ->delete();
+
+            // Kembalikan status jadi draft
+            $penjualanHead->update([
+                'status_kasir' => 'draft',
+            ]);
+        });
+
+        return redirect()
+            ->route('farmasi.show', $id)
+            ->with('success', 'Pembayaran berhasil dibatalkan. Status transaksi kembali menjadi DRAFT dan dikeluarkan dari laporan shift kasir.');
+    }
 }
+
+

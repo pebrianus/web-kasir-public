@@ -178,3 +178,6 @@ Route::get('/farmasi/{id}/cetakKuitansi', [FarmasiController::class, 'cetakKuita
 
 Route::post('/farmasi/{id}/bayar', [FarmasiController::class, 'prosesPembayaran'])
     ->name('farmasi.bayar');
+
+Route::post('/farmasi/{id}/batal', [FarmasiController::class, 'batalPembayaranFarmasi'])
+    ->name('farmasi.batal');

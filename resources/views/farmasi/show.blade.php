@@ -138,11 +138,30 @@
                         </button>
                     @endif
 
+
                     <a href="{{ route('farmasi.cetakKuitansi', $tagihan->simgos_penjualan_id) }}"
-                        class="btn btn-primary btn-block" target="_blank">
+                        class="btn btn-primary btn-block mb-3" target="_blank">
                         <i class="fas fa-print mr-1"></i>
                         Cetak Kuitansi
                     </a>
+
+
+                    @if ($tagihan->status_kasir == 'lunas')
+
+                        <form action="{{ route('farmasi.batal', $tagihan->simgos_penjualan_id) }}" method="POST"
+                            onsubmit="return confirm('Pembayaran akan dibatalkan.\n\nStatus tagihan akan kembali menjadi DRAFT.\n\nApakah Anda yakin ingin melanjutkan?');">
+
+                            @csrf
+                            @method('POST')
+
+                            <button type="submit" class="btn btn-outline-danger btn-block">
+                                <i class="fas fa-undo-alt mr-1"></i>
+                                Batalkan Pembayaran
+                            </button>
+
+                        </form>
+
+                    @endif
 
                 </div>
 
