@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\KasirTagihanPiutang;
 use Illuminate\Http\Request;
 use App\Models\Pasien;
 use App\Models\KasirTagihanHead;
@@ -445,39 +446,45 @@ class KasirController extends Controller
             'metode_bayar_id' => 'required|integer',
             'nominal_bayar' => 'required|numeric|min:0',
             'jenis_kasir' => 'required|integer',
+            // Validasi tambahan jika piutang
+            'total_piutang_dipilih' => 'required_if:metode_bayar_id,4|numeric|min:1',
+            'piutang_item_ids' => 'required_if:metode_bayar_id,4|array',
+            'piutang_item_ids.*' => 'integer',
         ]);
 
+        $metodeBayarID = $request->metode_bayar_id;
         $jenisKasir = $request->jenis_kasir;
+        $isPiutang = ($metodeBayarID == 4);
 
         // ======================================================
-        // 🔥 VALIDASI SESI AKTIF SESUAI JENIS KASIR + USER LOGIN
+        // VALIDASI SESI AKTIF
         // ======================================================
-        $sesiAktif = KasirSesi::where('status', 'BUKA')->where('jenis_kasir', $jenisKasir)->first();
+        $sesiAktif = KasirSesi::where('status', 'BUKA')
+            ->where('jenis_kasir', $jenisKasir)
+            ->first();
 
         if (!$sesiAktif) {
-            return redirect()
-                ->back()
-                ->with(
-                    'error',
-                    'Sesi kasir untuk jenis kasir ' .
-                    $jenisKasir .
-                    ' belum dibuka!
-             Silakan buka sesi kasir sesuai role Anda.',
-                );
+            return redirect()->back()->with(
+                'error',
+                'Sesi kasir untuk jenis kasir ' . $jenisKasir . ' belum dibuka! Silakan buka sesi kasir sesuai role Anda.'
+            );
         }
 
         // Ambil data tagihan lokal
         $tagihanHead = KasirTagihanHead::findOrFail($id);
 
-        // Cek tagihan sudah lunas?
-        if ($tagihanHead->status_kasir == 'lunas') {
+        // Cek tagihan sudah lunas / piutang?
+        if (in_array($tagihanHead->status_kasir, ['lunas', 'piutang'])) {
             return redirect()
                 ->route('kasir.tagihan.lokal', ['id' => $id])
-                ->with('info', 'Tagihan ini SUDAH LUNAS.');
+                ->with('info', 'Tagihan ini sudah diproses (' . strtoupper($tagihanHead->status_kasir) . ').');
         }
 
         // Cek total SIMGOS
-        $totalSimgosTerkini = DB::connection('simgos_pembayaran')->table('tagihan')->where('ID', $tagihanHead->simgos_tagihan_id)->value('TOTAL');
+        $totalSimgosTerkini = DB::connection('simgos_pembayaran')
+            ->table('tagihan')
+            ->where('ID', $tagihanHead->simgos_tagihan_id)
+            ->value('TOTAL');
 
         if ((float) $tagihanHead->total_asli_simgos != (float) $totalSimgosTerkini) {
             return redirect()
@@ -486,36 +493,81 @@ class KasirController extends Controller
         }
 
         // Hitung nominal wajib (server-side)
-        $nominalWajibBayar = $tagihanHead->total_asli_simgos - $tagihanHead->diskon_simgos - $tagihanHead->total_bayar_asuransi;
+        $nominalWajibBayar = $tagihanHead->total_asli_simgos
+            - $tagihanHead->diskon_simgos
+            - $tagihanHead->total_bayar_asuransi;
 
-        // Opsional: Jika Anda ingin membolehkan pembayaran parsial (mencicil),
-        // gunakan $request->nominal_bayar.
-        // Tapi jika harus lunas sekaligus, gunakan $nominalWajibBayar.
-        // Di sini saya asumsikan harus sesuai tagihan (untuk keamanan):
-        $nominalFinal = $nominalWajibBayar < 0 ? 0 : $nominalWajibBayar;
+        $nominalFinal = max(0, $nominalWajibBayar);
 
-        // 1. Simpan catatan transaksi di tabel log
-        KasirPembayaran::create([
-            'kasir_tagihan_head_id' => $tagihanHead->id,
-            'user_id' => Auth::id(), // ID kasir yang sedang login
-            'metode_bayar_id' => $request->metode_bayar_id,
-            'nominal_bayar' => $nominalFinal,
-            // 'nominal_bayar' => $request->nominal_bayar,
-            'kasir_sesi_id' => $sesiAktif->id,
-        ]);
+        // ======================================================
+        // HITUNG NOMINAL ASURANSI DARI ITEM YANG DIPILIH
+        // ======================================================
+        $nominalPiutang = 0;
 
-        // 2. Update status tagihan utama menjadi 'lunas'
-        $tagihanHead->update([
-            'status_kasir' => 'lunas',
-        ]);
+        if ($isPiutang) {
+            // Ambil dari detail tagihan berdasarkan piutang_item_ids yang dikirim
+            $nominalPiutang = KasirTagihanDetail::whereIn('id', $request->piutang_item_ids)
+                ->where('kasir_tagihan_head_id', $tagihanHead->id)
+                ->sum('nominal_ditanggung_asuransi');
 
-        // 3. Kembalikan ke halaman rincian
+            // Validasi server-side: nominal piutang tidak boleh 0
+            if ($nominalPiutang <= 0) {
+                return redirect()->back()->with(
+                    'error',
+                    'GAGAL: Nominal piutang asuransi tidak valid. Pastikan item dipilih dengan benar.'
+                );
+            }
+        }
+
+        // ======================================================
+        // WRAP DALAM TRANSACTION AGAR ATOMIC
+        // ======================================================
+        DB::transaction(function () use ($request, $tagihanHead, $sesiAktif, $nominalFinal, $nominalPiutang, $isPiutang) {
+            // 1. Simpan ke kasir_pembayaran (selalu, apapun metodenya)
+            KasirPembayaran::create([
+                'kasir_tagihan_head_id' => $tagihanHead->id,
+                'user_id' => Auth::id(),
+                'metode_bayar_id' => $request->metode_bayar_id,
+                'nominal_bayar' => $nominalFinal,
+                'kasir_sesi_id' => $sesiAktif->id,
+            ]);
+
+            if ($isPiutang) {
+                // 2a. Simpan ke tabel piutang
+                KasirTagihanPiutang::create([
+                    'kasir_tagihan_head_id' => $tagihanHead->id,
+                    'simgos_tagihan_id' => $tagihanHead->simgos_tagihan_id,
+                    'simgos_norm' => $tagihanHead->simgos_norm,
+                    'nama_pasien' => $tagihanHead->nama_pasien,
+                    'nama_asuransi' => $tagihanHead->nama_asuransi,
+                    'total_tagihan_asuransi' => $tagihanHead->total_bayar_asuransi,
+                    'nominal_piutang' => $nominalPiutang,
+                    'nominal_terbayar' => 0,
+                    'nominal_sisa' => $nominalPiutang,
+                    'status' => 'outstanding',
+                    'user_id' => Auth::id(),
+                    'kasir_sesi_id' => $sesiAktif->id,
+                ]);
+
+                // 2b. Update status tagihan → piutang
+                $tagihanHead->update(['status_kasir' => 'piutang']);
+
+            } else {
+                // 3. Pembayaran tunai/non-piutang → langsung lunas
+                $tagihanHead->update(['status_kasir' => 'lunas']);
+            }
+        });
+
+        $pesanSukses = $isPiutang
+            ? 'Tagihan berhasil diproses sebagai PIUTANG asuransi.'
+            : 'Pembayaran berhasil disimpan!';
+
         return redirect()
             ->route('kasir.tagihan.lokal', [
                 'id' => $id,
-                'jenis_kasir' => $jenisKasir,
+                'jenis_kasir' => $request->jenis_kasir,
             ])
-            ->with('success', 'Pembayaran berhasil disimpan!');
+            ->with('success', $pesanSukses);
     }
 
     /**

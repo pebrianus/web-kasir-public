@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\FarmasiController;
 use App\Http\Controllers\LaporanJasaController;
+use App\Http\Controllers\PiutangController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\KasirController;
@@ -181,3 +182,11 @@ Route::post('/farmasi/{id}/bayar', [FarmasiController::class, 'prosesPembayaran'
 
 Route::post('/farmasi/{id}/batal', [FarmasiController::class, 'batalPembayaranFarmasi'])
     ->name('farmasi.batal');
+
+Route::get('/piutang', [PiutangController::class, 'indexPiutang'])
+    ->name('piutang.index')
+    ->middleware('auth');
+
+Route::get('/piutang/{id}', [PiutangController::class, 'piutangDetail'])
+    ->name('piutang.detail')
+    ->middleware('auth');

@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'Rincian Tagihan: ' . $head->simgos_tagihan_id)
+@section('title', 'Rincian Piutang: ' . $head->simgos_tagihan_id)
 
 @section('content')
 
@@ -42,7 +42,7 @@
     @endif
 
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Rincian Tagihan Kasir</h1>
+        <h1 class="h3 mb-0 text-gray-800">Rincian Tagihan Piutang</h1>
         {{-- Tombol Cetak Kuitansi kita pindahkan ke sidebar kanan --}}
     </div>
 
@@ -312,17 +312,13 @@
     </div> {{-- ==== END ROW ==== --}}
 
     {{-- MODAL PEMBAYARAN --}}
-    {{-- MODAL PEMBAYARAN (yang sudah ada) --}}
     <div class="modal fade" id="modalPembayaran" tabindex="-1" role="dialog" aria-labelledby="modalPembayaranLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
-                {{-- HAPUS action dari form, kita handle via JS --}}
-                <form id="formPembayaran" action="{{ route('kasir.bayar-tagihan.store', ['id' => $head->id]) }}"
-                    method="POST">
+                <form action="{{ route('kasir.bayar-tagihan.store', ['id' => $head->id]) }}" method="POST">
                     @csrf
                     <input type="hidden" name="jenis_kasir" value="{{ $jenis_kasir }}">
-                    <input type="hidden" name="nominal_bayar" value="{{ $total_pasien_bersih }}">
 
                     <div class="modal-header">
                         <h5 class="modal-title" id="modalPembayaranLabel">Konfirmasi Pembayaran</h5>
@@ -331,231 +327,42 @@
                         </button>
                     </div>
                     <div class="modal-body">
+
+                        {{-- Ambil total pasien dari tfoot tabel --}}
+                        @php
+                            $total_pasien = 0;
+                            foreach ($detail as $item) {
+                                $total_pasien += $item->nominal_ditanggung_pasien;
+                            }
+                        @endphp
+
                         <div class="form-group">
                             <label>Total Tagihan Pasien</label>
-                            <input type="text" class="form-control form-control-lg"
+                            <input type="text" class="form-control form-control-lg" id="total-tagihan-pasien"
                                 value="Rp {{ number_format($total_pasien_bersih, 2, ',', '.') }}" readonly>
                         </div>
+
                         <hr>
+
                         <div class="form-group">
                             <label for="metode_bayar_id">Metode Bayar</label>
                             <select class="form-control" id="metode_bayar_id" name="metode_bayar_id" required>
                                 <option value="" selected disabled>-- Pilih Metode Bayar --</option>
                                 @foreach ($metodeBayar as $metode)
+                                    {{-- Kita pakai 'TABEL_ID' sebagai value, sesuai skema Anda --}}
                                     <option value="{{ $metode->TABEL_ID }}">{{ $metode->DESKRIPSI }}</option>
                                 @endforeach
                             </select>
+                            <input type="hidden" name="nominal_bayar" value="{{ $total_pasien }}">
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" type="button" data-dismiss="modal">Batal</button>
-                        {{-- Ubah type="button" agar kita kontrol via JS --}}
-                        <button type="button" class="btn btn-primary" id="btnKonfirmasiPembayaran">
-                            Konfirmasi Pembayaran
-                        </button>
+                        <button class="btn btn-primary" type="submit">Konfirmasi Pembayaran</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-
-    {{-- ============================================== --}}
-    {{-- MODAL PIUTANG ASURANSI (BARU) --}}
-    {{-- ============================================== --}}
-    <div class="modal fade" id="modalPiutang" tabindex="-1" role="dialog" aria-labelledby="modalPiutangLabel"
-        aria-hidden="true" data-backdrop="static">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header bg-warning">
-                    <h5 class="modal-title text-white" id="modalPiutangLabel">
-                        <i class="fas fa-file-invoice-dollar mr-2"></i>
-                        Pilih Piutang Asuransi
-                    </h5>
-                    <button class="close text-white" type="button" id="btnTutupModalPiutang" aria-label="Close">
-                        <span aria-hidden="true">×</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted">Pilih tagihan asuransi yang akan dijadikan piutang untuk pembayaran ini:</p>
-
-                    @php
-                        // Filter detail yang ditanggung asuransi > 0
-                        $itemAsuransi = $detail->filter(fn($i) => $i->nominal_ditanggung_asuransi > 0);
-                    @endphp
-
-                    @if ($itemAsuransi->isEmpty())
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle mr-2"></i>
-                            Tidak ada tagihan yang ditanggung asuransi.
-                        </div>
-                    @else
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th width="40">
-                                            <input type="checkbox" id="checkAll" title="Pilih Semua">
-                                        </th>
-                                        <th>Deskripsi Item</th>
-                                        <th class="text-right">Qty</th>
-                                        <th class="text-right">Ditanggung Asuransi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($itemAsuransi as $item)
-                                        <tr class="row-piutang" style="cursor:pointer">
-                                            <td>
-                                                <input type="checkbox" class="chk-piutang" name="piutang_item_ids[]"
-                                                    value="{{ $item->id }}" data-nominal="{{ $item->nominal_ditanggung_asuransi }}"
-                                                    form="formPembayaran">
-                                            </td>
-                                            <td>{{ $item->deskripsi_item }}</td>
-                                            <td class="text-right">{{ $item->qty }}</td>
-                                            <td class="text-right text-primary font-weight-bold">
-                                                Rp {{ number_format($item->nominal_ditanggung_asuransi, 0, ',', '.') }}
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                                <tfoot>
-                                    <tr class="table-info">
-                                        <td colspan="3" class="text-right font-weight-bold">Total Piutang Dipilih:</td>
-                                        <td class="text-right font-weight-bold" id="totalPiutangDipilih">Rp 0</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                        {{-- Hidden input untuk total piutang yang dipilih --}}
-                        <input type="hidden" name="total_piutang_dipilih" id="inputTotalPiutang" form="formPembayaran"
-                            value="0">
-                    @endif
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" id="btnKembaliKePembayaran">
-                        <i class="fas fa-arrow-left mr-1"></i> Kembali
-                    </button>
-                    <button type="button" class="btn btn-warning" id="btnKonfirmasiPiutang" @if($itemAsuransi->isEmpty())
-                    disabled @endif>
-                        <i class="fas fa-check mr-1"></i> Konfirmasi & Proses Piutang
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- ============================================== --}}
-    {{-- JAVASCRIPT --}}
-    {{-- ============================================== --}}
-    @push('scripts')
-        <script>
-            $(document).ready(function () {
-
-                const METODE_PIUTANG_ID = 4;
-
-                // -----------------------------------------------
-                // Tombol Konfirmasi di Modal Pembayaran
-                // -----------------------------------------------
-                $('#btnKonfirmasiPembayaran').on('click', function () {
-                    const metodeTerpilih = parseInt($('#metode_bayar_id').val());
-
-                    if (!metodeTerpilih) {
-                        alert('Silakan pilih metode bayar terlebih dahulu.');
-                        return;
-                    }
-
-                    if (metodeTerpilih === METODE_PIUTANG_ID) {
-                        // Tutup modal pembayaran, buka modal piutang
-                        $('#modalPembayaran').modal('hide');
-                        $('#modalPembayaran').on('hidden.bs.modal', function () {
-                            $('#modalPiutang').modal('show');
-                            $(this).off('hidden.bs.modal'); // unbind agar tidak loop
-                        });
-                    } else {
-                        // Submit form biasa
-                        $('#formPembayaran').submit();
-                    }
-                });
-
-                // -----------------------------------------------
-                // Tombol Kembali dari Modal Piutang
-                // -----------------------------------------------
-                $('#btnKembaliKePembayaran').on('click', function () {
-                    $('#modalPiutang').modal('hide');
-                    $('#modalPiutang').on('hidden.bs.modal', function () {
-                        $('#modalPembayaran').modal('show');
-                        $(this).off('hidden.bs.modal');
-                    });
-                });
-
-                // Tombol X di Modal Piutang = kembali ke Modal Pembayaran
-                $('#btnTutupModalPiutang').on('click', function () {
-                    $('#modalPiutang').modal('hide');
-                    $('#modalPiutang').on('hidden.bs.modal', function () {
-                        $('#modalPembayaran').modal('show');
-                        $(this).off('hidden.bs.modal');
-                    });
-                });
-
-                // -----------------------------------------------
-                // Checkbox: Pilih Semua
-                // -----------------------------------------------
-                $('#checkAll').on('change', function () {
-                    $('.chk-piutang').prop('checked', this.checked);
-                    hitungTotalPiutang();
-                });
-
-                // -----------------------------------------------
-                // Checkbox: Per Item — klik baris juga bisa
-                // -----------------------------------------------
-                $(document).on('click', '.row-piutang', function (e) {
-                    if (!$(e.target).is('input[type=checkbox]')) {
-                        const chk = $(this).find('.chk-piutang');
-                        chk.prop('checked', !chk.prop('checked'));
-                    }
-                    hitungTotalPiutang();
-                });
-
-                $('.chk-piutang').on('change', function () {
-                    hitungTotalPiutang();
-                });
-
-                // -----------------------------------------------
-                // Hitung Total Piutang yang Dipilih
-                // -----------------------------------------------
-                function hitungTotalPiutang() {
-                    let total = 0;
-                    $('.chk-piutang:checked').each(function () {
-                        total += parseFloat($(this).data('nominal')) || 0;
-                    });
-
-                    // Format angka Indonesia
-                    const formatted = 'Rp ' + total.toLocaleString('id-ID', { minimumFractionDigits: 0 });
-                    $('#totalPiutangDipilih').text(formatted);
-                    $('#inputTotalPiutang').val(total);
-
-                    // Disable tombol konfirmasi jika tidak ada yang dipilih
-                    $('#btnKonfirmasiPiutang').prop('disabled', total === 0);
-                }
-
-                // -----------------------------------------------
-                // Konfirmasi Piutang → Submit Form
-                // -----------------------------------------------
-                $('#btnKonfirmasiPiutang').on('click', function () {
-                    const totalDipilih = parseFloat($('#inputTotalPiutang').val()) || 0;
-                    if (totalDipilih === 0) {
-                        alert('Pilih minimal satu item piutang asuransi.');
-                        return;
-                    }
-
-                    if (confirm('Konfirmasi proses piutang asuransi sebesar Rp ' +
-                        totalDipilih.toLocaleString('id-ID') + '?')) {
-                        $('#formPembayaran').submit();
-                    }
-                });
-
-            });
-        </script>
-    @endpush
-
 
 @endsection

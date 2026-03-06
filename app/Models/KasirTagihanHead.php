@@ -28,4 +28,17 @@ class KasirTagihanHead extends Model
         'total_bayar_asuransi',
         'status_kasir',
     ];
+
+    // Di dalam KasirTagihanHead.php
+
+    public function piutang()
+    {
+        return $this->hasOne(KasirTagihanPiutang::class, 'kasir_tagihan_head_id');
+    }
+
+    // Jika 1 tagihan bisa punya banyak piutang (misal cicilan), pakai hasMany:
+// public function piutang()
+// {
+//     return $this->hasMany(KasirTagihanPiutang::class, 'kasir_tagihan_head_id');
+// }
 }
