@@ -80,6 +80,8 @@ class KasirController extends Controller
         // Ambil filter show tagihan, default 'proses'
         $statusFilter = $request->input('status', 'proses');
 
+        // dd($statusFilter);
+
         $processedTags = KasirTagihanHead::where('simgos_norm', $norm)->select('id', 'simgos_tagihan_id', 'status_kasir')->get()->keyBy('simgos_tagihan_id');
 
         // 2. Ambil daftar tagihan (masih harga brutto)
@@ -112,16 +114,22 @@ class KasirController extends Controller
 
 
         $lunasIds = $processedTags->where('status_kasir', 'lunas')->pluck('simgos_tagihan_id');
+        $piutangIds = $processedTags->where('status_kasir', 'piutang')->pluck('simgos_tagihan_id');
+
+        // Gabungkan kedua ID yang ingin dikecualikan
+        $excludedIds = $lunasIds->merge($piutangIds);
+
         if ($statusFilter == 'proses') {
-            // Tampilkan tagihan yang BELUM lunas
-            // (Termasuk yang 'draft' ATAU yang 'baru' / belum ada di lokal)
-            $daftarTagihanQuery->whereNotIn('t.ID', $lunasIds);
+            // Tampilkan tagihan yang BELUM lunas DAN BUKAN piutang
+            $daftarTagihanQuery->whereNotIn('t.ID', $excludedIds);
+        } elseif ($statusFilter == 'piutang') {
+            $daftarTagihanQuery->whereIn('t.ID', $piutangIds);
         } else {
-            // Tampilkan HANYA tagihan yang SUDAH lunas
             $daftarTagihanQuery->whereIn('t.ID', $lunasIds);
         }
 
         $daftarTagihan = $daftarTagihanQuery->get();
+        // dd($daftarTagihan);
 
         // --- LOGIKA HITUNG DISKON & TOTAL BERSIH ---
         // Kita loop setiap tagihan untuk mengecek apakah ada diskon di SIMGOS
@@ -576,12 +584,11 @@ class KasirController extends Controller
      */
     public function batalPembayaran(Request $request, $id)
     {
-        // $id adalah kasir_tagihan_head_id
         $tagihanHead = KasirTagihanHead::findOrFail($id);
         $jenisKasir = $request->jenis_kasir;
 
-        // 1. Validasi: Hanya bisa batal jika status sudah lunas
-        if ($tagihanHead->status_kasir != 'lunas') {
+        // 1. Validasi: Hanya bisa batal jika status lunas ATAU piutang
+        if (!in_array($tagihanHead->status_kasir, ['lunas', 'piutang'])) {
             return redirect()
                 ->route('kasir.tagihan.lokal', ['id' => $id])
                 ->with('error', 'Tagihan ini statusnya belum lunas, tidak perlu dibatalkan.');
@@ -592,14 +599,16 @@ class KasirController extends Controller
             // A. Soft Delete semua pembayaran terkait tagihan ini
             KasirPembayaran::where('kasir_tagihan_head_id', $tagihanHead->id)->delete();
 
-            // B. Kembalikan status header menjadi 'draft'
-            $tagihanHead->update([
-                'status_kasir' => 'draft',
-            ]);
+            // B. Jika piutang, hapus juga record piutangnya
+            if ($tagihanHead->status_kasir === 'piutang') {
+                KasirTagihanPiutang::where('kasir_tagihan_head_id', $tagihanHead->id)->delete();
+            }
+
+            // C. Kembalikan status header menjadi 'draft'
+            $tagihanHead->update(['status_kasir' => 'draft']);
         });
 
         // 3. Redirect kembali
-        // Karena status sudah 'draft', tombol 'Refresh SIMGOS' akan muncul otomatis di view
         return redirect()
             ->route('kasir.tagihan.lokal', ['id' => $id, 'jenis_kasir' => $jenisKasir])
             ->with('success', 'Pembayaran BERHASIL DIBATALKAN. Silakan tekan tombol [Refresh] untuk menarik data revisi dari SIMGOS.');

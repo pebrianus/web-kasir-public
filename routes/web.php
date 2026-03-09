@@ -190,3 +190,19 @@ Route::get('/piutang', [PiutangController::class, 'indexPiutang'])
 Route::get('/piutang/{id}', [PiutangController::class, 'piutangDetail'])
     ->name('piutang.detail')
     ->middleware('auth');
+
+Route::get('/piutang/{id}', [PiutangController::class, 'detailPiutang'])
+    ->name('piutang.detail')
+    ->middleware('auth');
+
+Route::patch('/piutang/{id}/bayar', [PiutangController::class, 'bayarPiutang'])
+    ->name('piutang.bayar')
+    ->middleware('auth');
+
+Route::patch('/piutang/{id}/hapusbuku', [PiutangController::class, 'hapusBukuPiutang'])
+    ->name('piutang.hapusbuku')
+    ->middleware('auth');
+
+Route::patch('/piutang/{id}/batal-lunas', [PiutangController::class, 'batalLunasPiutang'])
+    ->name('piutang.batallunas')
+    ->middleware('auth');

@@ -247,12 +247,17 @@
                             <span class="icon text-white-50"><i class="fas fa-dollar-sign"></i></span>
                             <span class="text">Proses Pembayaran</span>
                         </button>
-                    @else
-                        {{-- JIKA SUDAH LUNAS: Tampilkan tombol cetak --}}
-
-                        <div class="alert alert-success text-center">
-                            <strong><i class="fas fa-check-circle"></i> SUDAH LUNAS</strong>
-                        </div>
+                    @elseif (in_array($head->status_kasir, ['lunas', 'piutang']))
+                        {{-- ALERT berbeda tergantung status --}}
+                        @if ($head->status_kasir == 'piutang')
+                            <div class="alert alert-warning text-center">
+                                <strong><i class="fas fa-clock"></i> PIUTANG</strong>
+                            </div>
+                        @else
+                            <div class="alert alert-success text-center">
+                                <strong><i class="fas fa-check-circle"></i> SUDAH LUNAS</strong>
+                            </div>
+                        @endif
 
                         <a href="{{ route('kuitansi.cetak.pasien', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
                             target="_blank" {{-- Buka di tab baru --}} class="btn btn-success btn-icon-split btn-block mb-2">

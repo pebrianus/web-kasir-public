@@ -36,9 +36,12 @@ class KasirTagihanHead extends Model
         return $this->hasOne(KasirTagihanPiutang::class, 'kasir_tagihan_head_id');
     }
 
+    // KasirTagihanHead.php
+    public function details()
+    {
+        return $this->hasMany(KasirTagihanDetail::class, 'kasir_tagihan_head_id');
+    }
+
     // Jika 1 tagihan bisa punya banyak piutang (misal cicilan), pakai hasMany:
-// public function piutang()
-// {
-//     return $this->hasMany(KasirTagihanPiutang::class, 'kasir_tagihan_head_id');
-// }
+
 }

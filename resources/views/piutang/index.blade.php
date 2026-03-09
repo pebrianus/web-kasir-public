@@ -58,57 +58,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @php
-                                    // ── DATA DUMMY ──────────────────────────────────────────
-                                    $dummyData = [
-                                        [
-                                            'nama' => 'Budi Santoso',
-                                            'no_rm' => 'RM-001234',
-                                            'tanggal' => '2025-06-01 08:30:00',
-                                            'total_biaya' => 1500000,
-                                            'piutang' => 750000,
-                                            'nama_asuransi' => 'BPJS Kesehatan',
-                                            'id' => 1,
-                                        ],
-                                        [
-                                            'nama' => 'Siti Rahma',
-                                            'no_rm' => 'RM-002567',
-                                            'tanggal' => '2025-06-02 10:15:00',
-                                            'total_biaya' => 3200000,
-                                            'piutang' => 3200000,
-                                            'nama_asuransi' => 'Prudential',
-                                            'id' => 2,
-                                        ],
-                                        [
-                                            'nama' => 'Ahmad Fauzi',
-                                            'no_rm' => 'RM-003891',
-                                            'tanggal' => '2025-06-03 14:00:00',
-                                            'total_biaya' => 800000,
-                                            'piutang' => 400000,
-                                            'nama_asuransi' => 'Allianz',
-                                            'id' => 3,
-                                        ],
-                                        [
-                                            'nama' => 'Dewi Lestari',
-                                            'no_rm' => 'RM-004122',
-                                            'tanggal' => '2025-06-04 09:45:00',
-                                            'total_biaya' => 5600000,
-                                            'piutang' => 2800000,
-                                            'nama_asuransi' => 'AXA Mandiri',
-                                            'id' => 4,
-                                        ],
-                                        [
-                                            'nama' => 'Rudi Hermawan',
-                                            'no_rm' => 'RM-005678',
-                                            'tanggal' => '2025-06-05 11:20:00',
-                                            'total_biaya' => 920000,
-                                            'piutang' => 920000,
-                                            'nama_asuransi' => 'BPJS Kesehatan',
-                                            'id' => 5,
-                                        ],
-                                    ];
-                                    // ────────────────────────────────────────────────────────
-                                @endphp
+
 
                                 @forelse ($data ?? $dummyData as $item)
                                     @php
