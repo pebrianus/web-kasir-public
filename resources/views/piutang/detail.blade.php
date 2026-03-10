@@ -295,18 +295,24 @@
                     </h6>
                     {{-- Badge Status --}}
                     @php
-                        $badgeClass = match ($piutang->status) {
-                            'lunas' => 'badge-success',
-                            'sebagian' => 'badge-warning',
-                            'outstanding' => 'badge-danger',
-                            default => 'badge-secondary',
-                        };
-                        $statusLabel = match ($piutang->status) {
-                            'lunas' => 'Lunas',
-                            'sebagian' => 'Sebagian',
-                            'outstanding' => 'Outstanding',
-                            default => ucfirst($piutang->status),
-                        };
+                        switch ($piutang->status) {
+                            case 'lunas':
+                                $badgeClass = 'badge-success';
+                                $statusLabel = 'Lunas';
+                                break;
+                            case 'sebagian':
+                                $badgeClass = 'badge-warning';
+                                $statusLabel = 'Sebagian';
+                                break;
+                            case 'outstanding':
+                                $badgeClass = 'badge-danger';
+                                $statusLabel = 'Outstanding';
+                                break;
+                            default:
+                                $badgeClass = 'badge-secondary';
+                                $statusLabel = ucfirst($piutang->status);
+                                break;
+                        }
                     @endphp
                     <span class="badge {{ $badgeClass }} badge-pill px-3 py-2">{{ $statusLabel }}</span>
                 </div>
