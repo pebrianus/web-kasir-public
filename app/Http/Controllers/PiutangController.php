@@ -27,9 +27,9 @@ class PiutangController extends Controller
             ->join('tagihan_pendaftaran as tp', 'tp.TAGIHAN', '=', 't.ID')
             ->join('pendaftaran.kunjungan as k', 'tp.PENDAFTARAN', '=', 'k.NOPEN')
             ->join('master.ruangan as r', 'k.RUANGAN', '=', 'r.ID')
-            // ->whereIn('r.JENIS_KUNJUNGAN', $jenisKasir)    // ← filter berdasarkan jenis kunjungan sesuai role
-            ->where('r.JENIS', 5)           // ← tambahan: pastikan ruangan definitif
-            ->where('k.REF', null)          // ← pastikan kunjungan utama, bukan sub-kunjungan
+            // ->whereIn('r.JENIS_KUNJUNGAN', $jenisKasir)
+            ->where('r.JENIS', 5)
+            ->whereNull('k.REF')        // ← PHP 7: gunakan whereNull() bukan where('k.REF', null)
             ->where('t.STATUS', 2)
             ->where('tp.STATUS', 1)
             ->where('tp.UTAMA', 1)
@@ -39,12 +39,21 @@ class PiutangController extends Controller
         $query->whereIn('simgos_tagihan_id', $allowedTagihanIds);
 
         // 4. Filter status piutang
-        match ($statusFilter) {
-            'lunas' => $query->lunas(),
-            'outstanding' => $query->outstanding(),
-            'sebagian' => $query->sebagian(),
-            default => $query->belumLunas(),
-        };
+        // PHP 7: match() tidak tersedia, gunakan switch/if-else
+        switch ($statusFilter) {
+            case 'lunas':
+                $query->lunas();
+                break;
+            case 'outstanding':
+                $query->outstanding();
+                break;
+            case 'sebagian':
+                $query->sebagian();
+                break;
+            default:
+                $query->belumLunas();
+                break;
+        }
 
         $data = $query
             ->select([
@@ -112,11 +121,14 @@ class PiutangController extends Controller
     public function hapusBukuPiutang($id)
     {
         $piutang = KasirTagihanPiutang::findOrFail($id);
+
+        $keteranganLama = $piutang->keterangan ? $piutang->keterangan . ' | ' : '';
+
         $piutang->update([
             'status' => 'lunas',
             'nominal_sisa' => 0,
             'tanggal_lunas' => now()->toDateString(),
-            'keterangan' => ($piutang->keterangan ? $piutang->keterangan . ' | ' : '') . 'Write-off',
+            'keterangan' => $keteranganLama . 'Write-off',
         ]);
 
         return redirect()->route('piutang.detail', $id)->with('info', 'Piutang telah dihapusbukukan.');
@@ -134,14 +146,17 @@ class PiutangController extends Controller
                 ->with('error', 'Piutang ini belum berstatus lunas, tidak dapat dibatalkan.');
         }
 
+        $keteranganLama = $piutang->keterangan ? $piutang->keterangan . ' | ' : '';
+        $keteranganBaru = $keteranganLama
+            . 'Pelunasan dibatalkan oleh ' . auth()->user()->nama
+            . ' pada ' . now()->format('d/m/Y H:i');
+
         $piutang->update([
-            'status' => 'outstanding',   // reset ke default ENUM
-            'nominal_terbayar' => 0,              // reset pembayaran
-            'nominal_sisa' => $piutang->nominal_piutang, // kembalikan ke nilai penuh
+            'status' => 'outstanding',
+            'nominal_terbayar' => 0,
+            'nominal_sisa' => $piutang->nominal_piutang,
             'tanggal_lunas' => null,
-            'keterangan' => ($piutang->keterangan ? $piutang->keterangan . ' | ' : '')
-                . 'Pelunasan dibatalkan oleh ' . auth()->user()->nama
-                . ' pada ' . now()->format('d/m/Y H:i'),
+            'keterangan' => $keteranganBaru,
         ]);
 
         // Sinkronkan status_kasir di tagihan head
