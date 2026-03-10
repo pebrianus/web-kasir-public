@@ -205,11 +205,14 @@
                     {{-- Progress Bar Pelunasan --}}
                     @php
                         $persen = $piutang->persentaseTerbayar();
-                        $barClass = match (true) {
-                            $persen >= 100 => 'bg-success',
-                            $persen >= 50 => 'bg-warning',
-                            default => 'bg-danger',
-                        };
+
+                        if ($persen >= 100) {
+                            $barClass = 'bg-success';
+                        } elseif ($persen >= 50) {
+                            $barClass = 'bg-warning';
+                        } else {
+                            $barClass = 'bg-danger';
+                        }
                     @endphp
                     <div class="mb-3">
                         <div class="d-flex justify-content-between small mb-1">
