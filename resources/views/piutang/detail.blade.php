@@ -130,8 +130,10 @@
                                         <td class="text-center">{{ $item->qty }}</td>
                                         <td class="text-right">{{ fmtRp($item->harga_satuan) }}</td>
                                         <td class="text-right">{{ fmtRp($item->subtotal) }}</td>
-                                        <td class="text-right bg-light">{{ fmtRp($item->nominal_ditanggung_asuransi) }}</td>
-                                        <td class="text-right bg-light px-2">{{ fmtRp($item->nominal_ditanggung_pasien) }}</td>
+                                        <td class="text-right bg-light">{{ fmtRp($item->nominal_ditanggung_asuransi) }}
+                                        </td>
+                                        <td class="text-right bg-light px-2">{{ fmtRp($item->nominal_ditanggung_pasien) }}
+                                        </td>
                                     </tr>
                                     @php
                                         $total_asli += $item->subtotal;
@@ -164,7 +166,8 @@
                                         <td colspan="2"></td>
                                     </tr>
                                     <tr class="bg-light">
-                                        <td colspan="3" class="text-right font-weight-bold">TOTAL BERSIH (Setelah Diskon)</td>
+                                        <td colspan="3" class="text-right font-weight-bold">TOTAL BERSIH (Setelah Diskon)
+                                        </td>
                                         <td class="text-right font-weight-bold">
                                             Rp {{ fmtRp($total_asli - $tagihanHead->diskon_simgos) }}
                                         </td>
@@ -221,8 +224,8 @@
                         </div>
                         <div class="progress" style="height: 18px; border-radius: 9px;">
                             <div class="progress-bar {{ $barClass }} progress-bar-striped" role="progressbar"
-                                style="width: {{ $persen }}%" aria-valuenow="{{ $persen }}" aria-valuemin="0"
-                                aria-valuemax="100">
+                                style="width: {{ $persen }}%" aria-valuenow="{{ $persen }}"
+                                aria-valuemin="0" aria-valuemax="100">
                             </div>
                         </div>
                     </div>
@@ -258,7 +261,8 @@
 
                     {{-- Info Jatuh Tempo --}}
                     @if ($piutang->tanggal_jatuh_tempo)
-                        <div class="mt-3 alert {{ $piutang->isJatuhTempo() ? 'alert-danger' : 'alert-secondary' }} py-2 mb-0">
+                        <div
+                            class="mt-3 alert {{ $piutang->isJatuhTempo() ? 'alert-danger' : 'alert-secondary' }} py-2 mb-0">
                             <i class="fas fa-calendar-alt mr-1"></i>
                             Jatuh Tempo: <strong>{{ $piutang->tanggal_jatuh_tempo->format('d/m/Y') }}</strong>
                             @if ($piutang->isJatuhTempo())
@@ -325,7 +329,8 @@
                             <i class="fas fa-check-circle fa-3x text-success mb-2"></i>
                             <div class="font-weight-bold text-success h5">PIUTANG LUNAS</div>
                             <div class="text-muted small">
-                                Dilunasi pada {{ $piutang->tanggal_lunas?->format('d/m/Y') ?? '-' }}
+                                Dilunasi pada
+                                {{ $piutang->tanggal_lunas ? $piutang->tanggal_lunas->format('d/m/Y') : '-' }}
                             </div>
                         </div>
                         <hr>
@@ -379,7 +384,6 @@
                                 <i class="fas fa-eraser mr-1"></i> Hapus Buku (Write-off)
                             </button>
                         </form>
-
                     @endif
 
                 </div>
@@ -419,7 +423,7 @@
                             <tr>
                                 <td class="text-muted pl-3">Jatuh Tempo</td>
                                 <td class="pr-3">
-                                    {{ $piutang->tanggal_jatuh_tempo?->format('d/m/Y') ?? '-' }}
+                                    {{ $piutang->tanggal_jatuh_tempo ? \Carbon\Carbon::parse($piutang->tanggal_jatuh_tempo)->format('d/m/Y') : '-' }}
                                     @if ($piutang->isJatuhTempo())
                                         <span class="badge badge-danger ml-1">Lewat</span>
                                     @endif
@@ -427,7 +431,7 @@
                             </tr>
                             <tr>
                                 <td class="text-muted pl-3">Dicatat oleh</td>
-                                <td class="pr-3">{{ $piutang->user?->name ?? '-' }}</td>
+                                <td class="pr-3">{{ $piutang->user ? $piutang->user->name : '-' }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -467,8 +471,9 @@
                                 <div class="input-group-prepend">
                                     <span class="input-group-text">Rp</span>
                                 </div>
-                                <input type="number" class="form-control" id="nominal_bayar" name="nominal_bayar" min="1"
-                                    max="{{ $piutang->nominal_sisa }}" step="0.01" placeholder="0" required>
+                                <input type="number" class="form-control" id="nominal_bayar" name="nominal_bayar"
+                                    min="1" max="{{ $piutang->nominal_sisa }}" step="0.01" placeholder="0"
+                                    required>
                             </div>
                             <small class="form-text text-muted">
                                 Maksimal: Rp {{ fmtRp($piutang->nominal_sisa) }}
@@ -515,7 +520,8 @@
                         <h5 class="modal-title">
                             <i class="fas fa-check-double mr-1"></i> Konfirmasi Pelunasan Penuh
                         </h5>
-                        <button class="close text-white" type="button" data-dismiss="modal"><span>&times;</span></button>
+                        <button class="close text-white" type="button"
+                            data-dismiss="modal"><span>&times;</span></button>
                     </div>
                     <div class="modal-body">
 
@@ -585,7 +591,7 @@
 
     @push('scripts')
         <script>
-            document.getElementById('nominal_bayar').addEventListener('input', function () {
+            document.getElementById('nominal_bayar').addEventListener('input', function() {
                 const max = parseFloat(this.max);
                 const val = parseFloat(this.value);
                 if (val > max) this.value = max;
