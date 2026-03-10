@@ -80,7 +80,7 @@ class PiutangController extends Controller
             ->findOrFail($id);
 
         $tagihanHead = $piutang->tagihanHead;
-        $tagihanDetail = $tagihanHead?->details ?? collect();
+        $tagihanDetail = $tagihanHead ? $tagihanHead->details : collect();
 
         return view('piutang.detail', compact('piutang', 'tagihanHead', 'tagihanDetail'));
     }
