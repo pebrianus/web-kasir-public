@@ -94,7 +94,7 @@
                         <i class="fas fa-list-alt mr-1"></i> Rincian Item Tagihan
                     </h6>
                 </div>
-                <div class="card-body p-0">
+                <div class="card-body p-2">
                     <div class="table-responsive">
                         <table class="table table-bordered table-sm mb-0">
                             <thead class="thead-light">
