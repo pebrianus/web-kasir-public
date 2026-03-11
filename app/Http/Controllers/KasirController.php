@@ -114,7 +114,7 @@ class KasirController extends Controller
 
 
         $lunasIds = $processedTags->where('status_kasir', 'lunas')->pluck('simgos_tagihan_id');
-        $piutangIds = $processedTags->where('status_kasir', 'piutang')->pluck('simgos_tagihan_id');
+        $piutangIds = $processedTags->where('status_kasir', 'outstanding')->pluck('simgos_tagihan_id');
 
         // Gabungkan kedua ID yang ingin dikecualikan
         $excludedIds = $lunasIds->merge($piutangIds);

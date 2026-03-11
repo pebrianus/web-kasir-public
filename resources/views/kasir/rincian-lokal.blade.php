@@ -247,9 +247,9 @@
                             <span class="icon text-white-50"><i class="fas fa-dollar-sign"></i></span>
                             <span class="text">Proses Pembayaran</span>
                         </button>
-                    @elseif (in_array($head->status_kasir, ['lunas', 'piutang']))
+                    @elseif (in_array($head->status_kasir, ['lunas', 'piutang', 'outstanding']))
                         {{-- ALERT berbeda tergantung status --}}
-                        @if ($head->status_kasir == 'piutang')
+                        @if ($head->status_kasir == 'piutang' || $head->status_kasir == 'outstanding')
                             <div class="alert alert-warning text-center">
                                 <strong><i class="fas fa-clock"></i> PIUTANG</strong>
                             </div>
