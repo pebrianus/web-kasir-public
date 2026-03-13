@@ -71,19 +71,6 @@ class PiutangController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        // TEMPORARY: duplikat data untuk testing pagination
-        $items = $data->items();
-        $duplicated = collect(array_merge(...array_fill(0, 30, $items)));
-
-        // Override $data dengan LengthAwarePaginator baru
-        $data = new \Illuminate\Pagination\LengthAwarePaginator(
-            $duplicated->forPage(\Illuminate\Pagination\Paginator::resolveCurrentPage(), 20),
-            $duplicated->count(),
-            20,
-            \Illuminate\Pagination\Paginator::resolveCurrentPage(),
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
-
         return view('piutang.index', compact('data', 'statusFilter', 'search'));
     }
 
