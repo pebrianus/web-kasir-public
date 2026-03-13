@@ -20,24 +20,41 @@
                             Daftar Tagihan Piutang
                         </h6>
 
-                        <div class="dropdown">
-                            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-toggle="dropdown"
-                                aria-haspopup="true" aria-expanded="false">
-                                Filter:
-                                <strong>
-                                    {{ ($statusFilter ?? 'belum') == 'belum' ? 'Belum Lunas' : 'Lunas' }}
-                                </strong>
-                            </button>
+                        <div class="d-flex align-items-center gap-2">
+                            {{-- Search Bar --}}
+                            <form method="GET" action="{{ route('piutang.index') }}" class="mr-2">
+                                <input type="hidden" name="status" value="{{ $statusFilter ?? 'belum' }}">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" placeholder="Cari Nama atau No RM..."
+                                        name="search" value="{{ request('search') }}">
+                                    <div class="input-group-append">
+                                        <button class="btn btn-primary" type="submit">
+                                            <i class="fas fa-search fa-sm"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
 
-                            <div class="dropdown-menu dropdown-menu-right">
-                                <a class="dropdown-item {{ ($statusFilter ?? 'belum') == 'belum' ? 'active' : '' }}"
-                                    href="{{ route('piutang.index', ['status' => 'belum']) }}">
-                                    Belum Lunas
-                                </a>
-                                <a class="dropdown-item {{ ($statusFilter ?? '') == 'lunas' ? 'active' : '' }}"
-                                    href="{{ route('piutang.index', ['status' => 'lunas']) }}">
-                                    Lunas
-                                </a>
+                            {{-- Filter Dropdown --}}
+                            <div class="dropdown">
+                                <button class="btn btn-outline-primary dropdown-toggle" type="button" data-toggle="dropdown"
+                                    aria-haspopup="true" aria-expanded="false">
+                                    Filter:
+                                    <strong>
+                                        {{ ($statusFilter ?? 'belum') == 'belum' ? 'Belum Lunas' : 'Lunas' }}
+                                    </strong>
+                                </button>
+
+                                <div class="dropdown-menu dropdown-menu-right">
+                                    <a class="dropdown-item {{ ($statusFilter ?? 'belum') == 'belum' ? 'active' : '' }}"
+                                        href="{{ route('piutang.index', ['status' => 'belum', 'search' => request('search')]) }}">
+                                        Belum Lunas
+                                    </a>
+                                    <a class="dropdown-item {{ ($statusFilter ?? '') == 'lunas' ? 'active' : '' }}"
+                                        href="{{ route('piutang.index', ['status' => 'lunas', 'search' => request('search')]) }}">
+                                        Lunas
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -78,8 +95,7 @@
                                         <td>Rp {{ number_format($piutang, 0, ',', '.') }}</td>
                                         <td>{{ $nama_asuransi }}</td>
                                         <td>
-                                            <a href="{{ route('piutang.detail', $id) }}"
-                                                class="btn btn-sm btn-primary">
+                                            <a href="{{ route('piutang.detail', $id) }}" class="btn btn-sm btn-primary">
                                                 Detail
                                             </a>
                                         </td>

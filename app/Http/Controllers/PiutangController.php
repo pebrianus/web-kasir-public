@@ -13,33 +13,26 @@ class PiutangController extends Controller
     public function indexPiutang(Request $request)
     {
         $statusFilter = $request->query('status', 'belum');
+        $search = $request->query('search');
         $query = KasirTagihanPiutang::query();
         $roleId = auth()->user()->role_id;
 
-        // 1. Tentukan jenis kunjungan berdasarkan role
-        // Role 1 = Rawat Jalan (JENIS_KUNJUNGAN = 1)
-        // Role lain = Rawat Inap + IGD + lainnya (JENIS_KUNJUNGAN = 2,3,4,5)
         $jenisKasir = $roleId == 1 ? [1] : [2, 3, 4, 5];
 
-        // 2. Ambil allowed tagihan IDs dari SIMGOS
         $allowedTagihanIds = DB::connection('simgos_pembayaran')
             ->table('tagihan as t')
             ->join('tagihan_pendaftaran as tp', 'tp.TAGIHAN', '=', 't.ID')
             ->join('pendaftaran.kunjungan as k', 'tp.PENDAFTARAN', '=', 'k.NOPEN')
             ->join('master.ruangan as r', 'k.RUANGAN', '=', 'r.ID')
-            // ->whereIn('r.JENIS_KUNJUNGAN', $jenisKasir)
             ->where('r.JENIS', 5)
-            ->whereNull('k.REF')        // ← PHP 7: gunakan whereNull() bukan where('k.REF', null)
+            ->whereNull('k.REF')
             ->where('t.STATUS', 2)
             ->where('tp.STATUS', 1)
             ->where('tp.UTAMA', 1)
             ->pluck('t.ID');
 
-        // 3. Filter piutang sesuai allowed IDs
         $query->whereIn('simgos_tagihan_id', $allowedTagihanIds);
 
-        // 4. Filter status piutang
-        // PHP 7: match() tidak tersedia, gunakan switch/if-else
         switch ($statusFilter) {
             case 'lunas':
                 $query->lunas();
@@ -53,6 +46,14 @@ class PiutangController extends Controller
             default:
                 $query->belumLunas();
                 break;
+        }
+
+        // Search
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('nama_pasien', 'like', "%{$search}%")
+                    ->orWhere('simgos_norm', 'like', "%{$search}%");
+            });
         }
 
         $data = $query
@@ -70,7 +71,20 @@ class PiutangController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return view('piutang.index', compact('data', 'statusFilter'));
+        // TEMPORARY: duplikat data untuk testing pagination
+        $items = $data->items();
+        $duplicated = collect(array_merge(...array_fill(0, 30, $items)));
+
+        // Override $data dengan LengthAwarePaginator baru
+        $data = new \Illuminate\Pagination\LengthAwarePaginator(
+            $duplicated->forPage(\Illuminate\Pagination\Paginator::resolveCurrentPage(), 20),
+            $duplicated->count(),
+            20,
+            \Illuminate\Pagination\Paginator::resolveCurrentPage(),
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return view('piutang.index', compact('data', 'statusFilter', 'search'));
     }
 
     // Detail piutang
