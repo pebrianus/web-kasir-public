@@ -774,9 +774,44 @@ class KasirController extends Controller
 
         // --- Lanjutkan proses refresh (mirip prosesDanBukaTagihan) ---
         $simgosTagihanID = $tagihanHead->simgos_tagihan_id; // Ambil ID SIMGOS dari head
+        $norm = $tagihanHead->simgos_norm;
 
         // 🔥 AMBIL NAMA ASURANSI TERBARU DARI SIMGOS
         $namaAsuransiBaru = $this->ambilNamaAsuransiSimgos($simgosTagihanID) ?? '-';
+
+        $dataPasien = DB::connection('simgos_master') // sesuaikan nama connection
+            ->table('pasien')
+            ->where('NORM', $norm)
+            ->select(
+                'NAMA',
+                'GELAR_DEPAN',
+                'GELAR_BELAKANG',
+            )
+            ->first();
+
+        // 🔥 AMBIL NAMA PASIEN TERBARU DARI SIMGOS (dengan gelar)
+        $namaPasienBaru = $tagihanHead->nama_pasien; // fallback: nama lama
+        if ($dataPasien) {
+            $namaPasienBaru = trim(
+                implode(' ', array_filter([
+                    $dataPasien->GELAR_DEPAN,
+                    $dataPasien->NAMA,
+                    $dataPasien->GELAR_BELAKANG,
+                ]))
+            );
+        }
+
+        // 🔥 AMBIL NAMA DOKTER DPJP TERBARU DARI SIMGOS
+        $namaDokterBaru = DB::connection('simgos_pembayaran')
+            ->table('tagihan as t')
+            ->join('tagihan_pendaftaran as tp', 'tp.TAGIHAN', '=', 't.ID')
+            ->join('pendaftaran.kunjungan as k', 'tp.PENDAFTARAN', '=', 'k.NOPEN')
+            ->join('master.dokter as d', 'k.DPJP', '=', 'd.ID')
+            ->join('master.pegawai as p', 'd.NIP', '=', 'p.NIP')
+            ->where('t.ID', $simgosTagihanID)
+            ->where('tp.STATUS', 1)
+            ->where('tp.UTAMA', 1)
+            ->value(DB::raw("CONCAT_WS(' ', p.GELAR_DEPAN, p.NAMA, p.GELAR_BELAKANG)"));
 
         // --- [BARU] AMBIL DATA DISKON TERBARU DARI SIMGOS ---
         // A. Ambil Diskon RS
@@ -861,7 +896,9 @@ class KasirController extends Controller
         // 6. Update total asli di header
         // $tagihanHead->update(['total_asli_simgos' => $totalAsliBaru]);
         $tagihanHead->update([
+            'nama_pasien' => $namaPasienBaru,
             'nama_asuransi' => $namaAsuransiBaru,
+            'nama_dokter' => $namaDokterBaru ?? $tagihanHead->nama_dokter, // Update nama dokter jika ada
             'total_asli_simgos' => $totalAsliBaru,
             'diskon_simgos' => $totalDiskonSimgos, // Update field diskon
             'total_bayar_asuransi' => 0,
