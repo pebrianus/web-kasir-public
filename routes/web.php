@@ -206,3 +206,7 @@ Route::patch('/piutang/{id}/hapusbuku', [PiutangController::class, 'hapusBukuPiu
 Route::patch('/piutang/{id}/batal-lunas', [PiutangController::class, 'batalLunasPiutang'])
     ->name('piutang.batallunas')
     ->middleware('auth');
+
+Route::delete('piutang/pembayaran/{pembayaran}/batal', [PiutangController::class, 'batalPembayaran'])
+    ->name('piutang.pembayaran.batal')
+    ->middleware('auth');

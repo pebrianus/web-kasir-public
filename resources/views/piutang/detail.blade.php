@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'Detail Piutang: ' . $piutang->simgos_norm)
+@section('title', 'Detail Piutang: ' . $piutang->nama_pasien)
 
 @section('content')
 
@@ -33,6 +33,12 @@
             <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
         </div>
     @endif
+
+    <style>
+        .table-hover tbody tr {
+            transition: background-color 0.3s ease;
+        }
+    </style>
 
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">
@@ -197,93 +203,87 @@
             </div>
 
             {{-- Card Riwayat Pembayaran Piutang --}}
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
+            <div class="card shadow mb-4 overflow-hidden">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-history mr-1"></i> Riwayat Pembayaran Piutang
+                        <i class="fas fa-history mr-1"></i> Riwayat Pembayaran
                     </h6>
+                    <span class="badge badge-pill badge-primary">{{ $riwayatBayar->count() }} transaksi</span>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
 
-                    {{-- Progress Bar Pelunasan --}}
-                    @php
-                        $persen = $piutang->persentaseTerbayar();
+                    @if ($riwayatBayar->isEmpty())
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                            Belum ada riwayat pembayaran.
+                        </div>
+                    @else
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th class="pl-3">#</th>
+                                        <th>Tanggal Bayar</th>
+                                        <th>Nominal Bayar</th>
+                                        <th>Sisa Sebelum</th>
+                                        <th>Sisa Sesudah</th>
+                                        <th>Status</th>
+                                        <th>Oleh</th>
+                                        <th>Keterangan</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @php $lastId = $riwayatBayar->max('id'); @endphp
 
-                        if ($persen >= 100) {
-                            $barClass = 'bg-success';
-                        } elseif ($persen >= 50) {
-                            $barClass = 'bg-warning';
-                        } else {
-                            $barClass = 'bg-danger';
-                        }
-                    @endphp
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between small mb-1">
-                            <span class="font-weight-bold">Progress Pelunasan</span>
-                            <span class="font-weight-bold">{{ $persen }}%</span>
-                        </div>
-                        <div class="progress" style="height: 18px; border-radius: 9px;">
-                            <div class="progress-bar {{ $barClass }} progress-bar-striped" role="progressbar"
-                                style="width: {{ $persen }}%" aria-valuenow="{{ $persen }}"
-                                aria-valuemin="0" aria-valuemax="100">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row text-center">
-                        <div class="col-4">
-                            <div class="border rounded p-2">
-                                <div class="text-xs text-muted mb-1">Total Piutang</div>
-                                <div class="font-weight-bold text-dark">
-                                    Rp {{ fmtRp($piutang->nominal_piutang) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="border rounded p-2">
-                                <div class="text-xs text-muted mb-1">Sudah Dibayar</div>
-                                <div class="font-weight-bold text-success">
-                                    Rp {{ fmtRp($piutang->nominal_terbayar) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div
-                                class="border rounded p-2 {{ $piutang->nominal_sisa > 0 ? 'border-danger' : 'border-success' }}">
-                                <div class="text-xs text-muted mb-1">Sisa Piutang</div>
-                                <div
-                                    class="font-weight-bold {{ $piutang->nominal_sisa > 0 ? 'text-danger' : 'text-success' }}">
-                                    Rp {{ fmtRp($piutang->nominal_sisa) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Info Jatuh Tempo --}}
-                    @if ($piutang->tanggal_jatuh_tempo)
-                        <div
-                            class="mt-3 alert {{ $piutang->isJatuhTempo() ? 'alert-danger' : 'alert-secondary' }} py-2 mb-0">
-                            <i class="fas fa-calendar-alt mr-1"></i>
-                            Jatuh Tempo: <strong>{{ $piutang->tanggal_jatuh_tempo->format('d/m/Y') }}</strong>
-                            @if ($piutang->isJatuhTempo())
-                                &mdash; <span class="font-weight-bold">MELEWATI JATUH TEMPO!</span>
-                            @endif
+                                    @foreach ($riwayatBayar as $i => $bayar)
+                                        <tr style="{{ $bayar->id === $lastId ? 'background-color: #f0f7ff;' : '' }}">
+                                            <td class="pl-3 text-muted">{{ $i + 1 }}</td>
+                                            <td>{{ $bayar->tanggal_bayar->format('d/m/Y') }}</td>
+                                            <td class="text-success">Rp {{ fmtRp($bayar->nominal_bayar) }}</td>
+                                            <td class="text-muted">Rp {{ fmtRp($bayar->nominal_sisa_sebelum) }}</td>
+                                            <td>Rp {{ fmtRp($bayar->nominal_sisa_sesudah) }}</td>
+                                            <td>
+                                                @if ($bayar->status_sesudah === 'lunas')
+                                                    <span class="badge badge-success">Lunas</span>
+                                                @elseif ($bayar->status_sesudah === 'sebagian')
+                                                    <span class="badge badge-warning">Sebagian</span>
+                                                @else
+                                                    <span class="badge badge-secondary">Outstanding</span>
+                                                @endif
+                                            </td>
+                                            <td>{{ $bayar->user->name ?? '-' }}</td>
+                                            <td class="text-muted small">{{ $bayar->keterangan ?? '-' }}</td>
+                                            <td class="text-right pr-3">
+                                                {{-- Tombol batal hanya di pembayaran terakhir --}}
+                                                @if ($bayar->id === $lastId && $piutang->status !== 'lunas')
+                                                    <form action="{{ route('piutang.pembayaran.batal', $bayar->id) }}" method="POST"
+                                                        onsubmit="return confirm('Yakin ingin membatalkan pembayaran ini? Saldo piutang akan dikembalikan.')">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                            <i class="fas fa-undo mr-1"></i> Batal
+                                                        </button>
+                                                    </form>
+                                                @elseif ($bayar->id === $lastId && $piutang->status === 'lunas')
+                                                    {{-- Piutang sudah lunas, tetap boleh dibatalkan --}}
+                                                    <form action="{{ route('piutang.pembayaran.batal', $bayar->id) }}" method="POST"
+                                                        onsubmit="return confirm('Piutang ini sudah lunas. Yakin ingin membatalkan pembayaran terakhir?')">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="btn btn-danger btn-sm">
+                                                            <i class="fas fa-undo mr-1"></i> Batal
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
                         </div>
                     @endif
 
-                    @if ($piutang->tanggal_lunas)
-                        <div class="mt-2 alert alert-success py-2 mb-0">
-                            <i class="fas fa-check-circle mr-1"></i>
-                            Lunas pada: <strong>{{ $piutang->tanggal_lunas->translatedFormat('j F Y') }}</strong>
-                        </div>
-                    @endif
-
-                    @if ($piutang->keterangan)
-                        <div class="mt-2 p-2 bg-light rounded small">
-                            <i class="fas fa-sticky-note mr-1 text-muted"></i>
-                            <span class="text-muted">Keterangan:</span> {{ $piutang->keterangan }}
-                        </div>
-                    @endif
                 </div>
             </div>
 
@@ -471,9 +471,8 @@
                                 <div class="input-group-prepend">
                                     <span class="input-group-text">Rp</span>
                                 </div>
-                                <input type="number" class="form-control" id="nominal_bayar" name="nominal_bayar"
-                                    min="1" max="{{ $piutang->nominal_sisa }}" step="0.01" placeholder="0"
-                                    required>
+                                <input type="number" class="form-control" id="nominal_bayar" name="nominal_bayar" min="1"
+                                    max="{{ $piutang->nominal_sisa }}" step="0.01" placeholder="0" required>
                             </div>
                             <small class="form-text text-muted">
                                 Maksimal: Rp {{ fmtRp($piutang->nominal_sisa) }}
@@ -520,8 +519,7 @@
                         <h5 class="modal-title">
                             <i class="fas fa-check-double mr-1"></i> Konfirmasi Pelunasan Penuh
                         </h5>
-                        <button class="close text-white" type="button"
-                            data-dismiss="modal"><span>&times;</span></button>
+                        <button class="close text-white" type="button" data-dismiss="modal"><span>&times;</span></button>
                     </div>
                     <div class="modal-body">
 
@@ -591,7 +589,7 @@
 
     @push('scripts')
         <script>
-            document.getElementById('nominal_bayar').addEventListener('input', function() {
+            document.getElementById('nominal_bayar').addEventListener('input', function () {
                 const max = parseFloat(this.max);
                 const val = parseFloat(this.value);
                 if (val > max) this.value = max;

@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+
 
 class KasirTagihanPiutang extends Model
 {
@@ -28,11 +31,11 @@ class KasirTagihanPiutang extends Model
 
     protected $casts = [
         'total_tagihan_asuransi' => 'decimal:2',
-        'nominal_piutang'        => 'decimal:2',
-        'nominal_terbayar'       => 'decimal:2',
-        'nominal_sisa'           => 'decimal:2',
-        'tanggal_jatuh_tempo'    => 'date',
-        'tanggal_lunas'          => 'date',
+        'nominal_piutang' => 'decimal:2',
+        'nominal_terbayar' => 'decimal:2',
+        'nominal_sisa' => 'decimal:2',
+        'tanggal_jatuh_tempo' => 'date',
+        'tanggal_lunas' => 'date',
     ];
 
     // -----------------------------------------------
@@ -86,8 +89,8 @@ class KasirTagihanPiutang extends Model
     public function scopeJatuhTempo($query)
     {
         return $query->whereNotNull('tanggal_jatuh_tempo')
-                     ->where('tanggal_jatuh_tempo', '<=', now())
-                     ->belumLunas();
+            ->where('tanggal_jatuh_tempo', '<=', now())
+            ->belumLunas();
     }
 
     // -----------------------------------------------
@@ -97,19 +100,42 @@ class KasirTagihanPiutang extends Model
     /**
      * Tambah nominal terbayar dan update status otomatis.
      */
-    public function tambahPembayaran(float $nominal): void
+    public function tambahPembayaran(float $nominal, ?string $keterangan = null): void
     {
-        $this->nominal_terbayar += $nominal;
-        $this->nominal_sisa      = max(0, $this->nominal_piutang - $this->nominal_terbayar);
+        if ($nominal <= 0) {
+            throw new \InvalidArgumentException('Nominal bayar harus lebih dari 0.');
+        }
+
+        if ($nominal > (float) $this->nominal_sisa) {
+            throw new \InvalidArgumentException('Nominal bayar melebihi sisa piutang.');
+        }
+
+        $sisaSebelum = (float) $this->nominal_sisa;
+        $statusSebelum = $this->status;
+
+        $this->nominal_terbayar = (float) $this->nominal_terbayar + $nominal;
+        $this->nominal_sisa = (float) $this->nominal_sisa - $nominal;
 
         if ($this->nominal_sisa <= 0) {
-            $this->status        = 'lunas';
+            $this->nominal_sisa = 0;
+            $this->status = 'lunas';
             $this->tanggal_lunas = now()->toDateString();
         } else {
             $this->status = 'sebagian';
         }
 
         $this->save();
+
+        $this->pembayaran()->create([
+            'nominal_bayar' => $nominal,
+            'nominal_sisa_sebelum' => $sisaSebelum,
+            'nominal_sisa_sesudah' => (float) $this->nominal_sisa,
+            'tanggal_bayar' => now()->toDateString(),
+            'status_sebelum' => $statusSebelum,
+            'status_sesudah' => $this->status,
+            'keterangan' => $keterangan,  // <-- masuk ke history, bukan ke piutang
+            'user_id' => auth()->id(),
+        ]);
     }
 
     /**
@@ -122,12 +148,23 @@ class KasirTagihanPiutang extends Model
             && $this->status !== 'lunas';
     }
 
+    public function getIsLunasAttribute(): bool
+    {
+        return $this->status === 'lunas';
+    }
+
     /**
      * Persentase pelunasan.
      */
     public function persentaseTerbayar(): float
     {
-        if ($this->nominal_piutang <= 0) return 0;
+        if ($this->nominal_piutang <= 0)
+            return 0;
         return round(($this->nominal_terbayar / $this->nominal_piutang) * 100, 2);
+    }
+
+    public function pembayaran(): HasMany
+    {
+        return $this->hasMany(KasirPiutangPembayaran::class);
     }
 }
