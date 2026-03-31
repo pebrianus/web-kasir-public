@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\KasirPiutangPembayaran;
 use App\Models\KasirTagihanPiutang;
 use Illuminate\Http\Request;
 use App\Models\Pasien;
@@ -457,7 +458,7 @@ class KasirController extends Controller
             'nominal_bayar' => 'required|numeric|min:0',
             'jenis_kasir' => 'required|integer',
             // Validasi tambahan jika piutang
-            'total_piutang_dipilih' => 'required_if:metode_bayar_id,4|numeric|min:1',
+            'total_piutang_dipilih' => 'exclude_unless:metode_bayar_id,4|required|numeric|min:1',
             'piutang_item_ids' => 'required_if:metode_bayar_id,4|array',
             'piutang_item_ids.*' => 'integer',
         ]);
@@ -596,14 +597,23 @@ class KasirController extends Controller
                 ->with('error', 'Tagihan ini statusnya belum lunas, tidak perlu dibatalkan.');
         }
 
+
+
         // 2. Proses Rollback Database
         DB::transaction(function () use ($tagihanHead) {
             // A. Soft Delete semua pembayaran terkait tagihan ini
             KasirPembayaran::where('kasir_tagihan_head_id', $tagihanHead->id)->delete();
 
-            // B. Jika piutang, hapus juga record piutangnya
-            if ($tagihanHead->status_kasir === 'piutang') {
-                KasirTagihanPiutang::where('kasir_tagihan_head_id', $tagihanHead->id)->delete();
+            // B. Jika piutang, hapus history pembayaran piutang lalu record piutangnya
+            if (in_array($tagihanHead->status_kasir, ['piutang', 'outstanding', 'lunas', 'sebagian'])) {                // Ambil semua id piutang milik tagihan ini dulu
+                $piutangIds = KasirTagihanPiutang::where('kasir_tagihan_head_id', $tagihanHead->id)
+                    ->pluck('id');
+
+                // Hapus semua history pembayaran piutang
+                KasirPiutangPembayaran::whereIn('kasir_tagihan_piutang_id', $piutangIds)->delete();
+
+                // Baru hapus record piutangnya
+                KasirTagihanPiutang::whereIn('id', $piutangIds)->delete();
             }
 
             // C. Kembalikan status header menjadi 'draft'

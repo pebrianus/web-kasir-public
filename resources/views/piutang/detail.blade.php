@@ -44,9 +44,15 @@
         <h1 class="h3 mb-0 text-gray-800">
             <i class="fas fa-file-invoice-dollar mr-2 text-primary"></i>Rincian Tagihan Piutang
         </h1>
-        <a href="{{ route('piutang.index') }}" class="btn btn-sm btn-outline-secondary">
-            <i class="fas fa-arrow-left mr-1"></i> Kembali ke Daftar
-        </a>
+        <div class="d-flex">
+            <a href="{{ route('kasir.tagihan.lokal', ['id' => $piutang->kasir_tagihan_head_id, 'jenis_kasir' => $jenis_kunjungan]) }}"
+                class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-file-invoice mr-1"></i> Kembali ke Halaman Tagihan
+            </a>
+            <a href="{{ route('piutang.index') }}" class="btn btn-sm btn-outline-secondary ml-2">
+                <i class="fas fa-arrow-left mr-1"></i> Kembali ke Daftar
+            </a>
+        </div>
     </div>
 
     <div class="row">

@@ -89,7 +89,20 @@ class PiutangController extends Controller
         $tagihanDetail = $tagihanHead ? $tagihanHead->details : collect();
         $riwayatBayar = $piutang->pembayaran->sortBy('id')->values();
 
-        return view('piutang.detail', compact('piutang', 'tagihanHead', 'tagihanDetail', 'riwayatBayar'));
+        $jenis_kunjungan = DB::connection('simgos_pembayaran')
+            ->table('tagihan as t')
+            ->join('tagihan_pendaftaran as tp', function ($join) {
+                $join->on('tp.TAGIHAN', '=', 't.ID')
+                    ->where('tp.STATUS', 1)
+                    ->where('tp.UTAMA', 1);
+            })
+            ->join('pendaftaran.kunjungan as k', 'k.NOPEN', '=', 'tp.PENDAFTARAN')
+            ->join('master.ruangan as r', 'r.ID', '=', 'k.RUANGAN')
+            ->where('t.ID', $piutang->simgos_tagihan_id)
+            ->orderBy('k.MASUK', 'asc') // ambil kunjungan terbaru jika ada duplikat
+            ->value('r.JENIS_KUNJUNGAN');
+
+        return view('piutang.detail', compact('piutang', 'tagihanHead', 'tagihanDetail', 'riwayatBayar', 'jenis_kunjungan'));
     }
 
     // Proses pembayaran (sebagian / lunas penuh)
