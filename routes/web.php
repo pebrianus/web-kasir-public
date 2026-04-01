@@ -44,7 +44,7 @@ Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login')->
 Route::post('/login', [LoginController::class, 'login'])->name('login.proses')->middleware('guest');
 
 // Rute untuk logout
-Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
+Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth', 'kasir.jenis');
 
 
 // === RUTE YANG TERPROTEKSI ===
@@ -53,82 +53,82 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->midd
 Route::get('/dashboard', function () {
     // Cukup tampilkan view-nya. Data user sudah diambil di layout.
     return view('dashboard.dashboard');
-})->middleware('auth')->name('dashboard'); // Beri nama 'dashboard'
+})->middleware('auth', 'kasir.jenis')->name('dashboard'); // Beri nama 'dashboard'
 
 Route::get('/pencarian/rawat-jalan', [KasirController::class, 'rawatJalan'])
     ->name('pencarian.rawat-jalan') // <-- Beri nama agar mudah dipanggil
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 Route::get('/pasien/{norm}/tagihan/{jenis_kasir}', [KasirController::class, 'showTagihanPasien'])
     ->name('kasir.pasien.tagihan')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 Route::post('/kasir/proses-tagihan', [KasirController::class, 'prosesDanBukaTagihan'])
     ->name('kasir.proses-tagihan')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 Route::get('/kasir/tagihan-lokal/{id}', [KasirController::class, 'showLokalTagihan'])
     ->name('kasir.tagihan.lokal')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 // Halaman untuk menampilkan form bagi tagihan
 Route::get('/kasir/bagi-tagihan/{id}', [KasirController::class, 'showBagiTagihan'])
     ->name('kasir.tagihan.bagi')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 // Rute untuk MENYIMPAN hasil bagi tagihan
 Route::post('/kasir/bagi-tagihan/{id}', [KasirController::class, 'storeBagiTagihan'])
     ->name('kasir.tagihan.bagi.store')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 Route::post('/kasir/bayar-tagihan/{id}', [KasirController::class, 'storePembayaran'])
     ->name('kasir.bayar-tagihan.store')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 Route::get('/kuitansi/pasien/{id}/cetak', [KasirController::class, 'cetakKuitansi'])
     ->name('kuitansi.cetak.pasien')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 // Rute untuk mencetak Kuitansi Asuransi
 Route::get('/kuitansi/asuransi/{id}/cetak', [KasirController::class, 'cetakKuitansi'])
     ->name('kuitansi.cetak.asuransi')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 // Rute untuk me-refresh tagihan Simgos
 Route::post('/kasir/refresh-tagihan/{id}', [KasirController::class, 'refreshTagihanSimgos'])
     ->name('kasir.tagihan.refresh')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 // Rute untuk mencetak rincian tagihan asuransi
 Route::get('/kasir/rincian/asuransi/cetak/{id}', [KasirController::class, 'cetakRincianAsuransi'])
     ->name('rincian.cetak.asuransi')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 // Rute untuk mencetak rincian tagihan pasien
 Route::get('/kasir/rincian/pasien/cetak/{id}', [KasirController::class, 'cetakRincianPasien'])
     ->name('rincian.cetak.pasien')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 // Rute untuk mencetak rincian tagihan lab
 Route::get('/kasir/rincian/lab/cetak/{id}', [KasirController::class, 'cetakRincianLab'])
     ->name('rincian.cetak.lab')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 // Rute untuk mencetak resep pasien
 Route::get('/cetak-resep/{id}', [KasirController::class, 'cetakResep'])
     ->name('rincian.cetak.resep')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 // Rute untuk memproses "Buka Kasir"
 Route::post('/kasir/buka-sesi', [KasirController::class, 'bukaSesiKasir'])
     ->name('kasir.sesi.buka')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 // Rute untuk memproses "Tutup Kasir"
 Route::post('/kasir/tutup-sesi', [KasirController::class, 'tutupSesiKasir'])
     ->name('kasir.sesi.tutup')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'kasir.jenis'])->group(function () {
     // Halaman filter/pencarian laporan (sesuai mockup-mu)
     Route::get('/laporan/penerimaan', [LaporanController::class, 'indexPenerimaan'])
         ->name('laporan.penerimaan.index');
@@ -139,7 +139,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/laporan/sesi/{id}/cetak', [LaporanController::class, 'cetakLaporanSesi'])
         ->name('laporan.sesi.cetak')
-        ->middleware('auth');
+        ->middleware('auth', 'kasir.jenis');
 
     Route::get('/laporan/jasa', [LaporanJasaController::class, 'indexJasa'])
         ->name('laporan.jasa.index');
@@ -167,15 +167,15 @@ Route::post('/kasir/tagihan/{id}/batal', [App\Http\Controllers\KasirController::
 // Route Kasir Farmasi
 Route::get('/farmasi', [FarmasiController::class, 'tagihanFarmasi'])
     ->name('farmasi.index') // <-- Beri nama agar mudah dipanggil
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 Route::get('/farmasi/{id}', [FarmasiController::class, 'showTagihanFarmasi'])
     ->name('farmasi.show')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 Route::get('/farmasi/{id}/cetakKuitansi', [FarmasiController::class, 'cetakKuitansiFarmasi'])
     ->name('farmasi.cetakKuitansi')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 Route::post('/farmasi/{id}/bayar', [FarmasiController::class, 'prosesPembayaran'])
     ->name('farmasi.bayar');
@@ -185,28 +185,28 @@ Route::post('/farmasi/{id}/batal', [FarmasiController::class, 'batalPembayaranFa
 
 Route::get('/piutang', [PiutangController::class, 'indexPiutang'])
     ->name('piutang.index')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 Route::get('/piutang/{id}', [PiutangController::class, 'piutangDetail'])
     ->name('piutang.detail')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 Route::get('/piutang/{id}', [PiutangController::class, 'detailPiutang'])
     ->name('piutang.detail')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 Route::patch('/piutang/{id}/bayar', [PiutangController::class, 'bayarPiutang'])
     ->name('piutang.bayar')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 Route::patch('/piutang/{id}/hapusbuku', [PiutangController::class, 'hapusBukuPiutang'])
     ->name('piutang.hapusbuku')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 Route::patch('/piutang/{id}/batal-lunas', [PiutangController::class, 'batalLunasPiutang'])
     ->name('piutang.batallunas')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
 
 Route::delete('piutang/pembayaran/{pembayaran}/batal', [PiutangController::class, 'batalPembayaran'])
     ->name('piutang.pembayaran.batal')
-    ->middleware('auth');
+    ->middleware('auth', 'kasir.jenis');
