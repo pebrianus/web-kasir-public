@@ -266,7 +266,7 @@ class KasirController extends Controller
                     ->where('rt.TARIF', '>', 0)
                     ->select(
                         'rt.REF_ID as simgos_ref_id',
-                        'rt.JENIS as simgos_jenis_tarif',
+                        DB::raw("1 as simgos_jenis_tarif"), // paksa jadi 1 biar sama dengan administrasi
                         't.NAMA as deskripsi_item',
                         'rt.JUMLAH as qty',
                         'rt.TARIF as harga_satuan',
