@@ -240,20 +240,37 @@ class KasirController extends Controller
             ->table('rincian_tagihan as rt')
             ->join('master.referensi as ref', function ($join) {
                 $join
-                    ->on('ref.ID', '=', 'rt.JENIS') // <-- Perbaikan: Join on ID
-                    ->where('ref.JENIS', 30); // Jenis Tarif
+                    ->on('ref.ID', '=', 'rt.JENIS')
+                    ->where('ref.JENIS', 30);
             })
             ->where('rt.TAGIHAN', $simgosTagihanID)
-            ->where('rt.JENIS', 1) // 1 = Administrasi
-            // Hanya mengambil harga admin yang lebih 0
+            ->where('rt.JENIS', 1)
             ->where('rt.TARIF', '>', 0)
             ->select(
-                // <-- PASTIKAN 5 KOLOM INI
                 'rt.REF_ID as simgos_ref_id',
                 'rt.JENIS as simgos_jenis_tarif',
-                DB::raw("'Administrasi' as deskripsi_item"), // Ambil nama langsung
+                DB::raw("'Administrasi' as deskripsi_item"),
                 'rt.JUMLAH as qty',
                 'rt.TARIF as harga_satuan',
+            )
+            ->union(
+                // Tindakan yang JENIS = 16 (Administrasi) digabung ke sini
+                DB::connection('simgos_pembayaran')
+                    ->table('rincian_tagihan as rt')
+                    ->join('layanan.tindakan_medis as tm', 'tm.ID', '=', 'rt.REF_ID')
+                    ->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')
+                    ->where('rt.TAGIHAN', $simgosTagihanID)
+                    ->where('rt.JENIS', 3)       // 3 = Tindakan
+                    ->where('tm.STATUS', 1)      // Tindakan Medis Aktif
+                    ->where('t.JENIS', 16)    // JENIS Administrasi
+                    ->where('rt.TARIF', '>', 0)
+                    ->select(
+                        'rt.REF_ID as simgos_ref_id',
+                        'rt.JENIS as simgos_jenis_tarif',
+                        't.NAMA as deskripsi_item',
+                        'rt.JUMLAH as qty',
+                        'rt.TARIF as harga_satuan',
+                    )
             );
 
         $queryTindakan = DB::connection('simgos_pembayaran')
@@ -263,6 +280,7 @@ class KasirController extends Controller
             ->where('rt.TAGIHAN', '=', $simgosTagihanID)
             ->where('rt.JENIS', 3) // 3 = Tindakan
             ->where('tm.STATUS', 1) // Tindakan Medis Aktif
+            ->where('t.JENIS', '!=', 16) // exclude tindakan jenis 16 (Administrasi)
             ->select(
                 // <-- PASTIKAN 5 KOLOM INI SAMA
                 'rt.REF_ID as simgos_ref_id',
