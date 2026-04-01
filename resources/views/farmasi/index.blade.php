@@ -16,33 +16,44 @@
 
                 <div class="card-header py-3">
                     <div class="d-flex justify-content-between align-items-center">
-
                         <h6 class="m-0 font-weight-bold text-primary">
                             Daftar Tagihan Farmasi
                         </h6>
-
-                        <div class="dropdown">
-                            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-toggle="dropdown"
-                                aria-haspopup="true" aria-expanded="false">
-                                Filter:
-                                <strong>
-                                    {{ $statusFilter == 'proses' ? 'Belum Selesai' : 'Selesai' }}
-                                </strong>
-                            </button>
-
-                            <div class="dropdown-menu dropdown-menu-right">
-                                <a class="dropdown-item {{ $statusFilter == 'proses' ? 'active' : '' }}"
-                                    href="{{ route('farmasi.index', ['status' => 'proses']) }}">
-                                    Belum Selesai
-                                </a>
-
-                                <a class="dropdown-item {{ $statusFilter == 'selesai' ? 'active' : '' }}"
-                                    href="{{ route('farmasi.index', ['status' => 'selesai']) }}">
-                                    Selesai
-                                </a>
+                        <div class="d-flex align-items-center gap-2">
+                            {{-- Search Bar --}}
+                            <form method="GET" action="{{ route('farmasi.index') }}" class="mr-2">
+                                <input type="hidden" name="status" value="{{ $statusFilter ?? 'proses' }}">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" placeholder="Cari Nama atau Nomor..."
+                                        name="search" value="{{ request('search') }}">
+                                    <div class="input-group-append">
+                                        <button class="btn btn-primary" type="submit">
+                                            <i class="fas fa-search fa-sm"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                            {{-- Filter Dropdown --}}
+                            <div class="dropdown">
+                                <button class="btn btn-outline-primary dropdown-toggle" type="button" data-toggle="dropdown"
+                                    aria-haspopup="true" aria-expanded="false">
+                                    Filter:
+                                    <strong>
+                                        {{ ($statusFilter ?? 'proses') == 'proses' ? 'Belum Selesai' : 'Selesai' }}
+                                    </strong>
+                                </button>
+                                <div class="dropdown-menu dropdown-menu-right">
+                                    <a class="dropdown-item {{ ($statusFilter ?? 'proses') == 'proses' ? 'active' : '' }}"
+                                        href="{{ route('farmasi.index', ['status' => 'proses', 'search' => request('search')]) }}">
+                                        Belum Selesai
+                                    </a>
+                                    <a class="dropdown-item {{ ($statusFilter ?? '') == 'selesai' ? 'active' : '' }}"
+                                        href="{{ route('farmasi.index', ['status' => 'selesai', 'search' => request('search')]) }}">
+                                        Selesai
+                                    </a>
+                                </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
 
@@ -105,4 +116,4 @@
             </div>
         </div>
 
-    @endsection
+@endsection

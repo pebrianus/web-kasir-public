@@ -15,44 +15,60 @@ class FarmasiController extends Controller
 {
     public function tagihanFarmasi(Request $request)
     {
-        // Default filter ke 'proses' (Belum Selesai)
         $statusFilter = $request->input('status', 'proses');
+        $search = $request->input('search');
 
         if ($statusFilter == 'proses') {
-            // ============================================
-            // 1A. TAB "BELUM SELESAI" (TARIK DARI SIMGOS)
-            // ============================================
-
-            // Ambil ID Penjualan yang sudah lunas di lokal agar tidak dobel muncul
             $lunasIds = KasirPenjualanHead::where('status_kasir', 'lunas')->pluck('simgos_penjualan_id')->toArray();
 
-            // Paginator dari tabel Penjualan SIMGOS
-            $paginator = DB::connection('simgos_penjualan')->table('penjualan as p')->select('p.NOMOR', 'p.PENGUNJUNG', 'p.TANGGAL')->where('p.STATUS', 2)->whereNotIn('p.NOMOR', $lunasIds)->orderBy('p.TANGGAL', 'desc')->paginate(10);
+            $query = DB::connection('simgos_penjualan')->table('penjualan as p')
+                ->select('p.NOMOR', 'p.PENGUNJUNG', 'p.TANGGAL')
+                ->where('p.STATUS', 2)
+                ->whereNotIn('p.NOMOR', $lunasIds)
+                ->orderBy('p.TANGGAL', 'desc');
 
-            // Ambil nomor list di halaman ini untuk mencari total di tabel tagihan
+            // Search di tab Belum Selesai
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('p.PENGUNJUNG', 'like', "%{$search}%")
+                        ->orWhere('p.NOMOR', 'like', "%{$search}%");
+                });
+            }
+
+            $paginator = $query->paginate(10);
+
             $nomorList = $paginator->pluck('NOMOR')->toArray();
 
-            // Ambil TOTAL harganya langsung dari tabel tagihan (SIMGOS)
-            $tagihanTotal = DB::connection('simgos_pembayaran')->table('tagihan')->whereIn('ID', $nomorList)->where('REF', 0)->pluck('TOTAL', 'ID');
+            $tagihanTotal = DB::connection('simgos_pembayaran')->table('tagihan')
+                ->whereIn('ID', $nomorList)
+                ->where('REF', 0)
+                ->pluck('TOTAL', 'ID');
 
-            // Format datanya agar mirip dengan kolom database lokal (Normalisasi)
             $data = $paginator->getCollection()->map(function ($item) use ($tagihanTotal) {
                 return (object) [
                     'simgos_penjualan_id' => $item->NOMOR,
                     'nama_pengunjung' => $item->PENGUNJUNG,
                     'simgos_tanggal' => $item->TANGGAL,
-                    'total_tagihan' => isset($tagihanTotal[$item->NOMOR]) ? $tagihanTotal[$item->NOMOR] : 0,
+                    'total_tagihan' => $tagihanTotal[$item->NOMOR] ?? 0,
                 ];
             });
 
-            // Set ulang collection ke paginator
             $paginator->setCollection($data);
             $dataList = $paginator;
+
         } else {
-            // ============================================
-            // 1B. TAB "SELESAI" (TARIK DARI LOKAL)
-            // ============================================
-            $dataList = KasirPenjualanHead::where('status_kasir', 'lunas')->orderBy('simgos_tanggal', 'desc')->paginate(10);
+            $query = KasirPenjualanHead::where('status_kasir', 'lunas')
+                ->orderBy('simgos_tanggal', 'desc');
+
+            // Search di tab Selesai
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('nama_pengunjung', 'like', "%{$search}%")
+                        ->orWhere('simgos_penjualan_id', 'like', "%{$search}%");
+                });
+            }
+
+            $dataList = $query->paginate(10);
         }
 
         return view('farmasi.index', [
