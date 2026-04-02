@@ -278,11 +278,10 @@ class KasirController extends Controller
             ->join('layanan.tindakan_medis as tm', 'tm.ID', '=', 'rt.REF_ID')
             ->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')
             ->where('rt.TAGIHAN', '=', $simgosTagihanID)
-            ->where('rt.JENIS', 3) // 3 = Tindakan
-            ->where('tm.STATUS', 1) // Tindakan Medis Aktif
-            ->where('t.JENIS', '!=', 16) // exclude tindakan jenis 16 (Administrasi)
+            ->where('rt.JENIS', 3)
+            ->where('tm.STATUS', 1)
+            ->whereNotIn('t.JENIS', [16, 18]) // exclude Administrasi (16) dan Farmasi (18)
             ->select(
-                // <-- PASTIKAN 5 KOLOM INI SAMA
                 'rt.REF_ID as simgos_ref_id',
                 'rt.JENIS as simgos_jenis_tarif',
                 't.NAMA as deskripsi_item',
@@ -295,15 +294,33 @@ class KasirController extends Controller
             ->join('layanan.farmasi as f', 'f.ID', '=', 'rt.REF_ID')
             ->join('inventory.barang as b', 'b.ID', '=', 'f.FARMASI')
             ->where('rt.TAGIHAN', $simgosTagihanID)
-            ->where('rt.JENIS', 4) // 4 = Farmasi
-            ->whereIn('f.STATUS', [1, 2]) // Farmasi (Proses, Final)
+            ->where('rt.JENIS', 4)
+            ->whereIn('f.STATUS', [1, 2])
             ->select(
-                // <-- PASTIKAN 5 KOLOM INI SAMA
                 'rt.REF_ID as simgos_ref_id',
                 'rt.JENIS as simgos_jenis_tarif',
                 'b.NAMA as deskripsi_item',
                 'rt.JUMLAH as qty',
                 'rt.TARIF as harga_satuan',
+            )
+            ->union(
+                // Tindakan yang JENIS = 18 (Farmasi) digabung ke sini
+                DB::connection('simgos_pembayaran')
+                    ->table('rincian_tagihan as rt')
+                    ->join('layanan.tindakan_medis as tm', 'tm.ID', '=', 'rt.REF_ID')
+                    ->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')
+                    ->where('rt.TAGIHAN', $simgosTagihanID)
+                    ->where('rt.JENIS', 3)
+                    ->where('tm.STATUS', 1)
+                    ->where('t.JENIS', 18)    // JENIS Farmasi
+                    ->where('rt.TARIF', '>', 0)
+                    ->select(
+                        'rt.REF_ID as simgos_ref_id',
+                        DB::raw("4 as simgos_jenis_tarif"), // paksa jadi 4 biar sama dengan farmasi
+                        't.NAMA as deskripsi_item',
+                        'rt.JUMLAH as qty',
+                        'rt.TARIF as harga_satuan',
+                    )
             );
 
         $queryRawatInap = DB::connection('simgos_pembayaran')
