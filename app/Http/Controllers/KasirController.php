@@ -563,20 +563,15 @@ class KasirController extends Controller
                     'GAGAL: Nominal piutang asuransi tidak valid. Pastikan item dipilih dengan benar.'
                 );
             }
+        } else {
+
         }
 
         // ======================================================
         // WRAP DALAM TRANSACTION AGAR ATOMIC
         // ======================================================
         DB::transaction(function () use ($request, $tagihanHead, $sesiAktif, $nominalFinal, $nominalPiutang, $isPiutang) {
-            // 1. Simpan ke kasir_pembayaran (selalu, apapun metodenya)
-            KasirPembayaran::create([
-                'kasir_tagihan_head_id' => $tagihanHead->id,
-                'user_id' => Auth::id(),
-                'metode_bayar_id' => $request->metode_bayar_id,
-                'nominal_bayar' => $nominalFinal,
-                'kasir_sesi_id' => $sesiAktif->id,
-            ]);
+
 
             if ($isPiutang) {
                 // 2a. Simpan ke tabel piutang
@@ -599,6 +594,15 @@ class KasirController extends Controller
                 $tagihanHead->update(['status_kasir' => 'piutang']);
 
             } else {
+
+                // 1. Simpan ke kasir_pembayaran (selalu, apapun metodenya)
+                KasirPembayaran::create([
+                    'kasir_tagihan_head_id' => $tagihanHead->id,
+                    'user_id' => Auth::id(),
+                    'metode_bayar_id' => $request->metode_bayar_id,
+                    'nominal_bayar' => $nominalFinal,
+                    'kasir_sesi_id' => $sesiAktif->id,
+                ]);
                 // 3. Pembayaran tunai/non-piutang → langsung lunas
                 $tagihanHead->update(['status_kasir' => 'lunas']);
             }
@@ -632,22 +636,28 @@ class KasirController extends Controller
                 ->with('error', 'Tagihan ini statusnya belum lunas, tidak perlu dibatalkan.');
         }
 
+        // 2. Cek apakah ini tagihan piutang yang sudah lunas (ada di kasir_pembayaran dengan metode 4)
+        $isPiutangSudahLunas = KasirPembayaran::where('kasir_tagihan_head_id', $tagihanHead->id)
+            ->where('metode_bayar_id', 4)
+            ->exists() && $tagihanHead->status_kasir === 'lunas';
 
+        if ($isPiutangSudahLunas) {
+            return redirect()
+                ->route('kasir.tagihan.lokal', ['id' => $id])
+                ->with('error', 'Tagihan piutang ini sudah lunas. Batalkan lewat menu Piutang terlebih dahulu.');
+        }
 
-        // 2. Proses Rollback Database
+        // 3. Proses Rollback Database
         DB::transaction(function () use ($tagihanHead) {
-            // A. Soft Delete semua pembayaran terkait tagihan ini
+            // A. Soft delete semua pembayaran terkait (jika ada)
             KasirPembayaran::where('kasir_tagihan_head_id', $tagihanHead->id)->delete();
 
-            // B. Jika piutang, hapus history pembayaran piutang lalu record piutangnya
-            if (in_array($tagihanHead->status_kasir, ['piutang', 'outstanding', 'lunas', 'sebagian'])) {                // Ambil semua id piutang milik tagihan ini dulu
+            // B. Jika status piutang (belum lunas, belum ada cicilan) → hapus record piutang
+            if ($tagihanHead->status_kasir === 'piutang') {
                 $piutangIds = KasirTagihanPiutang::where('kasir_tagihan_head_id', $tagihanHead->id)
                     ->pluck('id');
 
-                // Hapus semua history pembayaran piutang
                 KasirPiutangPembayaran::whereIn('kasir_tagihan_piutang_id', $piutangIds)->delete();
-
-                // Baru hapus record piutangnya
                 KasirTagihanPiutang::whereIn('id', $piutangIds)->delete();
             }
 
@@ -655,7 +665,6 @@ class KasirController extends Controller
             $tagihanHead->update(['status_kasir' => 'draft']);
         });
 
-        // 3. Redirect kembali
         return redirect()
             ->route('kasir.tagihan.lokal', ['id' => $id, 'jenis_kasir' => $jenisKasir])
             ->with('success', 'Pembayaran BERHASIL DIBATALKAN. Silakan tekan tombol [Refresh] untuk menarik data revisi dari SIMGOS.');

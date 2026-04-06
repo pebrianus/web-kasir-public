@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\KasirPembayaran;
 use App\Models\KasirPiutangPembayaran;
+use App\Models\KasirSesi;
 use App\Models\KasirTagihanPiutang;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 
@@ -116,14 +119,37 @@ class PiutangController extends Controller
             'keterangan' => 'nullable|string|max:255',
         ]);
 
-        $piutang->tambahPembayaran(
-            (float) $request->nominal_bayar,
-            $request->keterangan,
-        );
-
-        if ($piutang->status === 'lunas' && $piutang->tagihanHead) {
-            $piutang->tagihanHead->update(['status_kasir' => 'lunas']);
+        // Validasi sesi kasir aktif
+        $sesiAktif = KasirSesi::where('status', 'BUKA')->latest()->first();
+        if (!$sesiAktif) {
+            return redirect()->back()->with('error', 'Tidak ada sesi kasir yang aktif. Silakan buka sesi terlebih dahulu.');
         }
+
+        DB::transaction(function () use ($request, $piutang, $sesiAktif) {
+            $piutang->tambahPembayaran(
+                (float) $request->nominal_bayar,
+                $request->keterangan,
+            );
+
+            // Refresh agar status terbaru dari DB terbaca
+            $piutang->refresh();
+
+            if ($piutang->status === 'lunas') {
+                // Update status tagihan head → lunas
+                if ($piutang->tagihanHead) {
+                    $piutang->tagihanHead->update(['status_kasir' => 'lunas']);
+                }
+
+                // Rekap ke kasir_pembayaran dengan total keseluruhan piutang
+                KasirPembayaran::create([
+                    'kasir_tagihan_head_id' => $piutang->kasir_tagihan_head_id,
+                    'user_id' => Auth::id(),
+                    'metode_bayar_id' => 4, // piutang asuransi
+                    'nominal_bayar' => $piutang->nominal_piutang, // total keseluruhan, bukan cicilan
+                    'kasir_sesi_id' => $sesiAktif->id,
+                ]);
+            }
+        });
 
         $msg = $piutang->status === 'lunas'
             ? 'Piutang berhasil dilunasi.'
@@ -159,42 +185,44 @@ class PiutangController extends Controller
                 ->with('error', 'Piutang ini belum berstatus lunas, tidak dapat dibatalkan.');
         }
 
-        // Ambil history pembayaran terakhir (yang menyebabkan lunas)
         $lastPembayaran = $piutang->pembayaran()->latest('id')->first();
-
         if (!$lastPembayaran) {
             return redirect()->route('piutang.detail', $id)
                 ->with('error', 'Tidak ada history pembayaran yang dapat dibatalkan.');
         }
 
-        // Pastikan pembayaran terakhir memang yang mengubah status jadi lunas
         if ($lastPembayaran->status_sesudah !== 'lunas') {
             return redirect()->route('piutang.detail', $id)
                 ->with('error', 'Pembayaran terakhir bukan pelunasan, gunakan batal pembayaran cicilan.');
         }
 
-        // Restore saldo piutang menggunakan data dari history pembayaran
-        $piutang->nominal_terbayar = (float) $piutang->nominal_terbayar - (float) $lastPembayaran->nominal_bayar;
-        $piutang->nominal_sisa     = (float) $lastPembayaran->nominal_sisa_sebelum;
-        $piutang->status           = $lastPembayaran->status_sebelum;
-        $piutang->tanggal_lunas    = null;
+        DB::transaction(function () use ($piutang, $lastPembayaran) {
+            // Restore saldo piutang
+            $piutang->nominal_terbayar = (float) $piutang->nominal_terbayar - (float) $lastPembayaran->nominal_bayar;
+            $piutang->nominal_sisa = (float) $lastPembayaran->nominal_sisa_sebelum;
+            $piutang->status = $lastPembayaran->status_sebelum;
+            $piutang->tanggal_lunas = null;
+            $keteranganLama = $piutang->keterangan ? $piutang->keterangan . ' | ' : '';
+            $piutang->keterangan = $keteranganLama
+                . 'Pelunasan dibatalkan oleh ' . auth()->user()->nama
+                . ' pada ' . now()->format('d/m/Y H:i');
+            $piutang->save();
 
-        $keteranganLama = $piutang->keterangan ? $piutang->keterangan . ' | ' : '';
-        $piutang->keterangan = $keteranganLama
-            . 'Pelunasan dibatalkan oleh ' . auth()->user()->nama
-            . ' pada ' . now()->format('d/m/Y H:i');
+            // Hapus history pembayaran terakhir
+            $lastPembayaran->delete();
 
-        $piutang->save();
+            // Sinkronkan status_kasir di tagihan head
+            if ($piutang->tagihanHead) {
+                $piutang->tagihanHead->update([
+                    'status_kasir' => $piutang->status === 'outstanding' ? 'outstanding' : 'piutang',
+                ]);
+            }
 
-        // Hapus history pembayaran terakhir
-        $lastPembayaran->delete();
-
-        // Sinkronkan status_kasir di tagihan head
-        if ($piutang->tagihanHead) {
-            $piutang->tagihanHead->update([
-                'status_kasir' => $piutang->status === 'outstanding' ? 'outstanding' : 'piutang',
-            ]);
-        }
+            // Hapus rekap di kasir_pembayaran jika ada
+            KasirPembayaran::where('kasir_tagihan_head_id', $piutang->kasir_tagihan_head_id)
+                ->where('metode_bayar_id', 4)
+                ->delete();
+        });
 
         return redirect()->route('piutang.detail', $id)
             ->with('warning', 'Pelunasan piutang berhasil dibatalkan.');
@@ -220,6 +248,11 @@ class PiutangController extends Controller
         // Jika sebelumnya lunas, kembalikan status_kasir di tagihan head
         if ($pembayaran->status_sesudah === 'lunas' && $piutang->tagihanHead) {
             $piutang->tagihanHead->update(['status_kasir' => 'piutang']);
+
+            // Hapus rekap di kasir_pembayaran jika ada
+            KasirPembayaran::where('kasir_tagihan_head_id', $piutang->kasir_tagihan_head_id)
+                ->where('metode_bayar_id', 4)
+                ->delete();
         }
 
         $pembayaran->delete();
