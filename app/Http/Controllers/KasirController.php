@@ -630,7 +630,7 @@ class KasirController extends Controller
         $jenisKasir = $request->jenis_kasir;
 
         // 1. Validasi: Hanya bisa batal jika status lunas ATAU piutang
-        if (!in_array($tagihanHead->status_kasir, ['lunas', 'piutang'])) {
+        if (!in_array($tagihanHead->status_kasir, ['lunas', 'piutang', 'outstanding'])) {
             return redirect()
                 ->route('kasir.tagihan.lokal', ['id' => $id])
                 ->with('error', 'Tagihan ini statusnya belum lunas, tidak perlu dibatalkan.');
@@ -653,7 +653,7 @@ class KasirController extends Controller
             KasirPembayaran::where('kasir_tagihan_head_id', $tagihanHead->id)->delete();
 
             // B. Jika status piutang (belum lunas, belum ada cicilan) → hapus record piutang
-            if ($tagihanHead->status_kasir === 'piutang') {
+            if ($tagihanHead->status_kasir === 'piutang' || $tagihanHead->status_kasir === 'outstanding') {
                 $piutangIds = KasirTagihanPiutang::where('kasir_tagihan_head_id', $tagihanHead->id)
                     ->pluck('id');
 
