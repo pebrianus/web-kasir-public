@@ -47,6 +47,9 @@ class PiutangController extends Controller
             case 'sebagian':
                 $query->sebagian();
                 break;
+            case 'charity':
+                $query->charity();
+                break;
             default:
                 $query->belumLunas();
                 break;
@@ -278,5 +281,128 @@ class PiutangController extends Controller
         return redirect()
             ->route('piutang.detail', $piutang->id)
             ->with('success', 'Pembayaran berhasil dibatalkan, saldo piutang telah dikembalikan.');
+    }
+
+    public function charityPiutang(Request $request, $id)
+    {
+        $piutang = KasirTagihanPiutang::with('tagihanHead')->findOrFail($id);
+
+        if ($piutang->status === 'lunas' || $piutang->status === 'charity') {
+            return redirect()->route('piutang.detail', $id)
+                ->with('error', 'Piutang ini sudah berstatus ' . $piutang->status . ', tidak dapat diproses.');
+        }
+
+        // Ambil jenis_kunjungan dari SIMGOS (= jenis_kasir)
+        $jenisKasir = DB::connection('simgos_pembayaran')
+            ->table('tagihan as t')
+            ->join('tagihan_pendaftaran as tp', function ($join) {
+                $join->on('tp.TAGIHAN', '=', 't.ID')
+                    ->where('tp.STATUS', 1)
+                    ->where('tp.UTAMA', 1);
+            })
+            ->join('pendaftaran.kunjungan as k', 'k.NOPEN', '=', 'tp.PENDAFTARAN')
+            ->join('master.ruangan as r', 'r.ID', '=', 'k.RUANGAN')
+            ->where('t.ID', $piutang->simgos_tagihan_id)
+            ->orderBy('k.MASUK', 'asc')
+            ->value('r.JENIS_KUNJUNGAN');
+
+        if (!$jenisKasir) {
+            return redirect()->back()->with('error', 'Gagal mendeteksi jenis kasir dari data SIMGOS.');
+        }
+
+        // Validasi sesi kasir aktif sesuai jenis kasir
+        $sesiAktif = KasirSesi::where('status', 'BUKA')
+            ->where('jenis_kasir', $jenisKasir)
+            ->latest()
+            ->first();
+
+        if (!$sesiAktif) {
+            return redirect()->back()->with('error', 'Tidak ada sesi kasir aktif untuk jenis kasir ini.');
+        }
+
+        DB::transaction(function () use ($piutang, $sesiAktif) {
+            $sisaSebelum = (float) $piutang->nominal_sisa;
+            $statusSebelum = $piutang->status;
+
+            // Set status charity & lunasi sisa
+            $piutang->nominal_terbayar = (float) $piutang->nominal_terbayar + $sisaSebelum;
+            $piutang->nominal_sisa = 0;
+            $piutang->status = 'charity';
+            $piutang->tanggal_lunas = now()->toDateString();
+            $piutang->save();
+
+            // Catat di history pembayaran
+            $piutang->pembayaran()->create([
+                'nominal_bayar' => $sisaSebelum,
+                'nominal_sisa_sebelum' => $sisaSebelum,
+                'nominal_sisa_sesudah' => 0,
+                'tanggal_bayar' => now()->toDateString(),
+                'status_sebelum' => $statusSebelum,
+                'status_sesudah' => 'charity',
+                'keterangan' => 'Piutang diselesaikan melalui charity oleh ' . auth()->user()->nama,
+                'user_id' => auth()->id(),
+            ]);
+
+            // Update status tagihan head → lunas
+            if ($piutang->tagihanHead) {
+                $piutang->tagihanHead->update(['status_kasir' => 'lunas']);
+            }
+
+            // Rekap ke kasir_pembayaran
+            KasirPembayaran::create([
+                'kasir_tagihan_head_id' => $piutang->kasir_tagihan_head_id,
+                'user_id' => auth()->id(),
+                'metode_bayar_id' => 4,
+                'nominal_bayar' => $piutang->nominal_piutang,
+                'kasir_sesi_id' => $sesiAktif->id,
+            ]);
+        });
+
+        return redirect()->route('piutang.detail', $id)
+            ->with('success', 'Piutang berhasil diselesaikan melalui charity.');
+    }
+
+    public function batalCharity($id)
+    {
+        $piutang = KasirTagihanPiutang::with(['tagihanHead', 'pembayaran'])->findOrFail($id);
+
+        // 1. Validasi status: Pastikan memang berstatus charity
+        if ($piutang->status !== 'charity') {
+            return redirect()->back()->with('error', 'Piutang tidak berstatus Charity.');
+        }
+
+        // 2. Ambil record pembayaran terakhir (yang mencatat aksi charity)
+        $lastPembayaran = $piutang->pembayaran()->latest('id')->first();
+
+        if (!$lastPembayaran || $lastPembayaran->status_sesudah !== 'charity') {
+            return redirect()->back()->with('error', 'Data riwayat charity tidak ditemukan.');
+        }
+
+        DB::transaction(function () use ($piutang, $lastPembayaran) {
+            // 3. Kembalikan saldo dan status piutang ke kondisi sebelum charity
+            $piutang->nominal_terbayar = (float) $piutang->nominal_terbayar - (float) $lastPembayaran->nominal_bayar;
+            $piutang->nominal_sisa = (float) $lastPembayaran->nominal_sisa_sebelum;
+            $piutang->status = $lastPembayaran->status_sebelum; // Kembali ke 'outstanding' atau 'sebagian'
+            $piutang->tanggal_lunas = null;
+            $piutang->save();
+
+            // 4. Update status di Tagihan Head kembali ke 'piutang'
+            if ($piutang->tagihanHead) {
+                $piutang->tagihanHead->update(['status_kasir' => 'piutang']);
+            }
+
+            // 5. Hapus rekap di kasir_pembayaran (metode_bayar_id 4 sesuai function charity kamu)
+            KasirPembayaran::where('kasir_tagihan_head_id', $piutang->kasir_tagihan_head_id)
+                ->where('metode_bayar_id', 4)
+                ->latest() // Ambil yang terakhir jika ada beberapa
+                ->first()
+                    ?->delete();
+
+            // 6. Hapus history di kasir_piutang_pembayaran
+            $lastPembayaran->delete();
+        });
+
+        return redirect()->route('piutang.detail', $id)
+            ->with('success', 'Status Charity berhasil dibatalkan. Piutang telah dikembalikan ke saldo semula.');
     }
 }

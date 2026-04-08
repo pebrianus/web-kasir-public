@@ -203,8 +203,16 @@ Route::patch('/piutang/{id}/hapusbuku', [PiutangController::class, 'hapusBukuPiu
     ->name('piutang.hapusbuku')
     ->middleware('auth', 'kasir.jenis');
 
+Route::patch('/piutang/{id}/charity', [PiutangController::class, 'charityPiutang'])
+    ->name('piutang.charity')
+    ->middleware('auth', 'kasir.jenis');
+
 Route::patch('/piutang/{id}/batal-lunas', [PiutangController::class, 'batalLunasPiutang'])
     ->name('piutang.batallunas')
+    ->middleware('auth', 'kasir.jenis');
+
+Route::patch('/piutang/{id}/batal-charity', [PiutangController::class, 'batalCharity'])
+    ->name('piutang.batalcharity')
     ->middleware('auth', 'kasir.jenis');
 
 Route::delete('piutang/pembayaran/{pembayaran}/batal', [PiutangController::class, 'batalPembayaran'])

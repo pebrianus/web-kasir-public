@@ -41,7 +41,14 @@
                                     aria-haspopup="true" aria-expanded="false">
                                     Filter:
                                     <strong>
-                                        {{ ($statusFilter ?? 'belum') == 'belum' ? 'Belum Lunas' : 'Lunas' }}
+                                        @php
+                                            $labels = [
+                                                'belum' => 'Belum Lunas',
+                                                'lunas' => 'Lunas',
+                                                'charity' => 'Charity'
+                                            ];
+                                            echo $labels[$statusFilter ?? 'belum'] ?? 'Belum Lunas';
+                                        @endphp
                                     </strong>
                                 </button>
 
@@ -53,6 +60,10 @@
                                     <a class="dropdown-item {{ ($statusFilter ?? '') == 'lunas' ? 'active' : '' }}"
                                         href="{{ route('piutang.index', ['status' => 'lunas', 'search' => request('search')]) }}">
                                         Lunas
+                                    </a>
+                                    <a class="dropdown-item {{ ($statusFilter ?? '') == 'charity' ? 'active' : '' }}"
+                                        href="{{ route('piutang.index', ['status' => 'charity', 'search' => request('search')]) }}">
+                                        Charity
                                     </a>
                                 </div>
                             </div>

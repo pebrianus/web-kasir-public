@@ -340,20 +340,33 @@
                             </div>
                         </div>
                         <hr>
-                        {{-- Tombol cetak kuitansi pelunasan (sesuaikan route jika ada) --}}
-                        {{--
-                        <a href="{{ route('piutang.cetak', $piutang->id) }}" target="_blank"
-                            class="btn btn-success btn-icon-split btn-block mb-2">
-                            <span class="icon text-white-50"><i class="fas fa-print"></i></span>
-                            <span class="text">Cetak Bukti Lunas</span>
-                        </a>
-                        --}}
+
                         {{-- Tombol Batal Lunas --}}
                         <button type="button" class="btn btn-danger btn-icon-split btn-block mb-3" data-toggle="modal"
                             data-target="#modalBatalLunas">
                             <span class="icon text-white-50"><i class="fas fa-times-circle"></i></span>
                             <span class="text">Batalkan Pelunasan</span>
                         </button>
+
+                    @elseif ($piutang->status === 'charity')
+                        {{-- ── STATUS CHARITY ── --}}
+                        <div class="text-center py-3">
+                            <i class="fas fa-hand-holding-heart fa-3x text-info mb-2"></i>
+                            <div class="font-weight-bold text-info h5">STATUS: CHARITY</div>
+                            <div class="text-muted small">
+                                Ditandai charity pada
+                                {{ $piutang->updated_at ? $piutang->updated_at->format('d/m/Y') : '-' }}
+                            </div>
+                        </div>
+                        <hr>
+
+                        {{-- Tombol Pemicu Modal Batal Charity --}}
+                        <button type="button" class="btn btn-danger btn-icon-split btn-block mb-3" data-toggle="modal"
+                            data-target="#modalBatalCharity">
+                            <span class="icon text-white-50"><i class="fas fa-undo"></i></span>
+                            <span class="text">Batalkan Charity</span>
+                        </button>
+
                     @else
                         {{-- ── BELUM LUNAS: TAMPILKAN FORM BAYAR ── --}}
 
@@ -381,17 +394,17 @@
 
                         <hr>
 
-                        {{-- Tombol Tandai Lunas Manual (tanpa bayar, misal: dihapusbukukan) --}}
-                        <form action="{{ route('piutang.hapusbuku', $piutang->id) }}" method="POST"
-                            onsubmit="return confirm('Piutang akan ditandai lunas tanpa pembayaran (hapus buku). Lanjutkan?');">
+                        {{-- Tombol Set Charity --}}
+                        <form action="{{ route('piutang.charity', $piutang->id) }}" method="POST"
+                            onsubmit="return confirm('Piutang akan ditandai lunas melalui charity. Lanjutkan?');">
                             @csrf
                             @method('PATCH')
-                            <button type="submit" class="btn btn-outline-secondary btn-block btn-sm">
-                                <i class="fas fa-eraser mr-1"></i> Hapus Buku (Write-off)
+                            <button type="submit" class="btn btn-info btn-icon-split btn-block btn-sm">
+                                <span class="icon text-white-50"><i class="fas fa-hand-holding-heart"></i></span>
+                                <span class="text">Set Charity</span>
                             </button>
                         </form>
                     @endif
-
                 </div>
             </div>
 
@@ -587,6 +600,34 @@
                         @csrf
                         @method('PATCH')
                         <button type="submit" class="btn btn-danger">Ya, Batalkan Pelunasan</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalBatalCharity" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Konfirmasi Batalkan Charity</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Apakah Anda yakin ingin membatalkan status <strong>Charity</strong> pada piutang ini?</p>
+                    <p class="text-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Status piutang akan <strong>dikembalikan</strong> menjadi belum lunas (outstanding).
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <form action="{{ route('piutang.batalcharity', $piutang->id) }}" method="POST">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="btn btn-danger">Ya, Batalkan Charity</button>
                     </form>
                 </div>
             </div>

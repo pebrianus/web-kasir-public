@@ -76,6 +76,11 @@ class KasirTagihanPiutang extends Model
         return $query->where('status', 'lunas');
     }
 
+    public function scopeCharity($query)
+    {
+        return $query->where('status', 'charity');
+    }
+
     public function scopeBelumLunas($query)
     {
         return $query->whereIn('status', ['outstanding', 'sebagian']);
