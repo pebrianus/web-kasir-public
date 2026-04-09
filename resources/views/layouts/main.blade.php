@@ -34,13 +34,13 @@
             position: sticky;
             top: 0;
             height: 100vh;
-            /* opsional: supaya sidebar penuh */
-            /* overflow-y: auto; */
-            /* sidebar bisa discroll */
         }
 
         #accordionSidebar .collapse {
             z-index: 1050 !important;
+        }
+        #content-wrapper {
+            min-height: 100vh;
         }
     </style>
 
@@ -133,8 +133,7 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
 
                         <div class="">
                             <h6 class="collapse-header">Kelola Tagihan</h6>
-                            <a class="collapse-item"
-                                href="{{ route('piutang.index') }}">
+                            <a class="collapse-item" href="{{ route('piutang.index') }}">
                                 Piutang
                             </a>
                         </div>
@@ -213,9 +212,9 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
 
                                     {{-- Form untuk "Tutup Kasir" --}}
                                     <a class="dropdown-item" href="{{ route('kasir.sesi.tutup') }}" onclick="event.preventDefault();
-                                                                if(confirm('Anda yakin ingin menutup sesi kasir saat ini?')) {
-                                                                    document.getElementById('tutup-kasir-form').submit();
-                                                                }">
+                                                                    if(confirm('Anda yakin ingin menutup sesi kasir saat ini?')) {
+                                                                        document.getElementById('tutup-kasir-form').submit();
+                                                                    }">
                                         <i class="fas fa-door-closed fa-sm fa-fw mr-2 text-gray-400"></i>
                                         Tutup Kasir
                                     </a>
