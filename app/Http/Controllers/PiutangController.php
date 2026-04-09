@@ -392,11 +392,14 @@ class PiutangController extends Controller
             }
 
             // 5. Hapus rekap di kasir_pembayaran (metode_bayar_id 4 sesuai function charity kamu)
-            KasirPembayaran::where('kasir_tagihan_head_id', $piutang->kasir_tagihan_head_id)
+            $pembayaranCharity = KasirPembayaran::where('kasir_tagihan_head_id', $piutang->kasir_tagihan_head_id)
                 ->where('metode_bayar_id', 4)
-                ->latest() // Ambil yang terakhir jika ada beberapa
-                ->first()
-                    ?->delete();
+                ->latest()
+                ->first();
+
+            if ($pembayaranCharity) {
+                $pembayaranCharity->delete();
+            }
 
             // 6. Hapus history di kasir_piutang_pembayaran
             $lastPembayaran->delete();
