@@ -18,11 +18,8 @@ class PiutangController extends Controller
     {
         $statusFilter = $request->query('status', 'belum');
         $search = $request->query('search');
-        $query = KasirTagihanPiutang::query();
-        $roleId = auth()->user()->role_id;
 
-        $jenisKasir = $roleId == 1 ? [1] : [2, 3, 4, 5];
-
+        // Ambil allowed tagihan IDs dari SIMGOS
         $allowedTagihanIds = DB::connection('simgos_pembayaran')
             ->table('tagihan as t')
             ->join('tagihan_pendaftaran as tp', 'tp.TAGIHAN', '=', 't.ID')
@@ -35,8 +32,14 @@ class PiutangController extends Controller
             ->where('tp.UTAMA', 1)
             ->pluck('t.ID');
 
-        $query->whereIn('simgos_tagihan_id', $allowedTagihanIds);
+        // Mulai query + JOIN di awal agar semua where sudah punya konteks tabel
+        $query = KasirTagihanPiutang::query()
+            ->join('kasir_tagihan_head as kth', 'kth.id', '=', 'kasir_tagihan_piutang.kasir_tagihan_head_id');
 
+        // Filter allowed tagihan
+        $query->whereIn('kasir_tagihan_piutang.simgos_tagihan_id', $allowedTagihanIds);
+
+        // Filter status
         switch ($statusFilter) {
             case 'lunas':
                 $query->lunas();
@@ -55,26 +58,26 @@ class PiutangController extends Controller
                 break;
         }
 
-        // Search
+        // Search (satu kali, dengan prefix)
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('nama_pasien', 'like', "%{$search}%")
-                    ->orWhere('simgos_norm', 'like', "%{$search}%");
+                $q->where('kasir_tagihan_piutang.nama_pasien', 'like', "%{$search}%")
+                    ->orWhere('kasir_tagihan_piutang.simgos_norm', 'like', "%{$search}%");
             });
         }
 
         $data = $query
             ->select([
-                'id',
-                'simgos_norm            as no_rm',
-                'nama_pasien            as nama',
-                'nama_asuransi',
-                'total_tagihan_asuransi as total_biaya',
-                'nominal_piutang        as piutang',
-                'created_at             as tanggal',
-                'status',
+                'kasir_tagihan_piutang.id',
+                'kasir_tagihan_piutang.simgos_norm         as no_rm',
+                'kasir_tagihan_piutang.nama_pasien         as nama',
+                'kasir_tagihan_piutang.nama_asuransi',
+                'kasir_tagihan_piutang.nominal_piutang     as piutang',
+                'kasir_tagihan_piutang.created_at          as tanggal',
+                'kasir_tagihan_piutang.status',
+                DB::raw('(kth.total_asli_simgos - kth.diskon_simgos) as total_biaya'),
             ])
-            ->orderBy('created_at', 'desc')
+            ->orderBy('kasir_tagihan_piutang.created_at', 'desc')
             ->paginate(20)
             ->withQueryString();
 

@@ -63,38 +63,38 @@ class KasirTagihanPiutang extends Model
 
     public function scopeOutstanding($query)
     {
-        return $query->where('status', 'outstanding');
+        return $query->where('kasir_tagihan_piutang.status', 'outstanding');
     }
 
     public function scopeSebagian($query)
     {
-        return $query->where('status', 'sebagian');
+        return $query->where('kasir_tagihan_piutang.status', 'sebagian');
     }
 
     public function scopeLunas($query)
     {
-        return $query->where('status', 'lunas');
+        return $query->where('kasir_tagihan_piutang.status', 'lunas');
     }
 
     public function scopeCharity($query)
     {
-        return $query->where('status', 'charity');
+        return $query->where('kasir_tagihan_piutang.status', 'charity');
     }
 
     public function scopeBelumLunas($query)
     {
-        return $query->whereIn('status', ['outstanding', 'sebagian']);
+        return $query->whereIn('kasir_tagihan_piutang.status', ['outstanding', 'sebagian']);
     }
 
     public function scopeByAsuransi($query, $namaAsuransi)
     {
-        return $query->where('nama_asuransi', $namaAsuransi);
+        return $query->where('kasir_tagihan_piutang.nama_asuransi', $namaAsuransi);
     }
 
     public function scopeJatuhTempo($query)
     {
-        return $query->whereNotNull('tanggal_jatuh_tempo')
-            ->where('tanggal_jatuh_tempo', '<=', now())
+        return $query->whereNotNull('kasir_tagihan_piutang.tanggal_jatuh_tempo')
+            ->where('kasir_tagihan_piutang.tanggal_jatuh_tempo', '<=', now())
             ->belumLunas();
     }
 
