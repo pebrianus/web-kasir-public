@@ -399,7 +399,6 @@
                                 <thead class="thead-light">
                                     <tr>
                                         <th width="40">
-                                            <input type="checkbox" id="checkAll" title="Pilih Semua">
                                         </th>
                                         <th>Deskripsi Item</th>
                                         <th class="text-right">Qty</th>
@@ -435,14 +434,20 @@
                             value="0">
                     @endif
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer d-flex justify-content-between">
                     <button type="button" class="btn btn-secondary" id="btnKembaliKePembayaran">
                         <i class="fas fa-arrow-left mr-1"></i> Kembali
                     </button>
-                    <button type="button" class="btn btn-warning" id="btnKonfirmasiPiutang" @if($itemAsuransi->isEmpty())
-                    disabled @endif>
-                        <i class="fas fa-check mr-1"></i> Konfirmasi & Proses Piutang
-                    </button>
+                    <div class="d-flex align-items-center">
+                        <button type="button" class="btn btn-info" id="btnCheckAll" @if($itemAsuransi->isEmpty())
+                        disabled @endif>
+                            <i class="fas fa-check-double mr-1"></i> Pilih Semua
+                        </button>
+                        <button type="button" class="btn btn-success ml-2" id="btnKonfirmasiPiutang"
+                            @if($itemAsuransi->isEmpty()) disabled @endif>
+                            <i class="fas fa-check mr-1"></i> Konfirmasi & Proses Piutang
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -558,6 +563,15 @@
                     }
                 });
 
+            });
+
+            $('#btnCheckAll').on('click', function () {
+                const allChecked = $('.chk-piutang:not(:checked)').length === 0;
+                $('.chk-piutang').prop('checked', !allChecked).trigger('change');
+                $(this).html(allChecked
+                    ? '<i class="fas fa-check-double mr-1"></i> Pilih Semua'
+                    : '<i class="fas fa-times-circle mr-1"></i> Batal Semua'
+                );
             });
         </script>
     @endpush
