@@ -82,6 +82,7 @@ class LaporanController extends Controller
                 'kasir_penjualan_heads.simgos_penjualan_id as no_tagihan',
                 'kasir_penjualan_heads.total_tagihan as tunai', // Anggap tunai
                 DB::raw("0 as piutang"), // Tidak ada asuransi
+                'kasir_pembayaran.keterangan as keterangan',
                 'kasir_pembayaran.created_at as waktu_bayar'
             )
                 ->join('kasir_pembayaran', function ($join) {
@@ -100,6 +101,7 @@ class LaporanController extends Controller
                 'kasir_tagihan_head.simgos_tagihan_id as no_tagihan',
                 'kasir_tagihan_head.total_bayar_pasien as tunai',
                 'kasir_tagihan_head.total_bayar_asuransi as piutang',
+                'kasir_pembayaran.keterangan as keterangan',
                 'kasir_pembayaran.created_at as waktu_bayar'
             )
                 ->join('kasir_pembayaran', function ($join) {
@@ -116,6 +118,8 @@ class LaporanController extends Controller
             'total_piutang' => $daftarTransaksi->sum('piutang'),
             'total_subsidi' => 0,
         ];
+
+        // dd($daftarTransaksi->first());
 
         return view('laporan.laporan-sesi-detail', [
             'sesi' => $sesi,
@@ -151,6 +155,7 @@ class LaporanController extends Controller
                 'kasir_penjualan_heads.simgos_penjualan_id as no_tagihan',
                 'kasir_penjualan_heads.total_tagihan as tunai',
                 DB::raw("0 as piutang"), // Tidak ada asuransi
+                'kasir_pembayaran.keterangan as keterangan',
                 'kasir_pembayaran.created_at as waktu_bayar'
             )
                 ->join('kasir_pembayaran', function ($join) {
@@ -170,6 +175,7 @@ class LaporanController extends Controller
                 'kasir_tagihan_head.simgos_tagihan_id as no_tagihan',
                 'kasir_tagihan_head.total_bayar_pasien as tunai',
                 'kasir_tagihan_head.total_bayar_asuransi as piutang',
+                'kasir_pembayaran.keterangan as keterangan',
                 'kasir_pembayaran.created_at as waktu_bayar'
             )
                 ->join('kasir_pembayaran', function ($join) {

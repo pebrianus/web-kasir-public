@@ -592,6 +592,7 @@ class KasirController extends Controller
                         'metode_bayar_id' => $request->metode_bayar_id,
                         'nominal_bayar' => $nominalBayarPasien,
                         'kasir_sesi_id' => $sesiAktif->id,
+                        'keterangan' => 'Bayar Tagihan Pasien Asuransi',
                     ]);
                 }
 

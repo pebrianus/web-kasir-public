@@ -20,7 +20,8 @@ class KasirPembayaran extends Model
         'metode_bayar_id',
         'nominal_bayar',
         'kasir_sesi_id',
-        'deleted_at'
+        'deleted_at',
+        'keterangan'
     ];
 
     // Relasi ke Tagihan Penjualan (Farmasi)

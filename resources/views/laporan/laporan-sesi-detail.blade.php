@@ -71,7 +71,7 @@
                                 <td class="text-right">{{ number_format($tx->tunai, 0, ',', '.') }}</td>
                                 <td class="text-right">0</td>
                                 <td class="text-right">{{ number_format($tx->piutang, 0, ',', '.') }}</td>
-                                <td></td>
+                                <td>{{ $tx->keterangan }}</td>
                             </tr>
                         @empty
                             <tr>

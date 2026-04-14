@@ -171,6 +171,7 @@ class PiutangController extends Controller
                     'metode_bayar_id' => 4,
                     'nominal_bayar' => $piutang->nominal_piutang,
                     'kasir_sesi_id' => $sesiAktif->id, // sesi sesuai jenis kasir
+                    'keterangan' => 'Pelunasan Piutang / Asuransi',
                 ]);
             }
         });
