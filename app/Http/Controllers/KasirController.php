@@ -536,16 +536,16 @@ class KasirController extends Controller
         }
 
         // Cek total SIMGOS
-        // $totalSimgosTerkini = DB::connection('simgos_pembayaran')
-        //     ->table('tagihan')
-        //     ->where('ID', $tagihanHead->simgos_tagihan_id)
-        //     ->value('TOTAL');
+        $totalSimgosTerkini = DB::connection('simgos_pembayaran')
+            ->table('tagihan')
+            ->where('ID', $tagihanHead->simgos_tagihan_id)
+            ->value('TOTAL');
 
-        // if ((float) $tagihanHead->total_asli_simgos != (float) $totalSimgosTerkini) {
-        //     return redirect()
-        //         ->route('kasir.tagihan.lokal', ['id' => $id])
-        //         ->with('error', 'GAGAL BAYAR: Data SIMGOS telah berubah! Silakan refresh.');
-        // }
+        if ((float) $tagihanHead->total_asli_simgos != (float) $totalSimgosTerkini) {
+            return redirect()
+                ->route('kasir.tagihan.lokal', ['id' => $id])
+                ->with('error', 'GAGAL BAYAR: Data SIMGOS telah berubah! Silakan refresh.');
+        }
 
         // Hitung nominal wajib (server-side)
         $nominalWajibBayar = $tagihanHead->total_asli_simgos
@@ -594,7 +594,7 @@ class KasirController extends Controller
                 $nominalBayarPasien = $nominalFinal;
 
                 // Rekap porsi PASIEN ke kasir_pembayaran (jika ada)
-                if ($nominalBayarPasien > 0) {
+                // if ($nominalBayarPasien > 0) {
                     KasirPembayaran::create([
                         'kasir_tagihan_head_id' => $tagihanHead->id,
                         'user_id' => Auth::id(),
@@ -603,7 +603,7 @@ class KasirController extends Controller
                         'kasir_sesi_id' => $sesiAktif->id,
                         'keterangan' => 'Bayar Tagihan Pasien Asuransi',
                     ]);
-                }
+                // }
 
                 // Simpan porsi ASURANSI ke tabel piutang
                 KasirTagihanPiutang::create([

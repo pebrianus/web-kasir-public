@@ -232,10 +232,10 @@
                                 </button>
                             </form>
 
-                            <a href="{{ route('kasir.tagihan.rincian.edit', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
+                            {{-- <a href="{{ route('kasir.tagihan.rincian.edit', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
                                 class="btn btn-warning btn-sm" title="Edit Rincian Tagihan">
                                 <i class="fas fa-edit"></i>
-                            </a>
+                            </a> --}}
                         @endif
                         <a href="{{ route('kasir.pasien.tagihan', ['norm' => $head->simgos_norm, 'jenis_kasir' => $jenis_kasir]) }}"
                             class="btn btn-danger btn-sm" title="Kembali">
