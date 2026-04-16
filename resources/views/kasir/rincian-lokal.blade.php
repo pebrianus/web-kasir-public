@@ -90,6 +90,16 @@
                     <h6 class="m-0 font-weight-bold text-primary">Rincian Tagihan</h6>
                 </div>
                 <div class="card-body">
+                    @if(!$isDataValid)
+                        <div class="alert alert-warning shadow-sm border-left-warning">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                <div>
+                                    <strong>Note: </strong> Rincian tagihan telah dimodifikasi secara manual. Silakan tekan tombol <strong>Refresh Tagihan</strong> untuk mengambil ulang data dari SIMGOS.
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                     <div class="table-responsive">
                         <table class="table table-bordered" width="100%" cellspacing="0">
                             <thead>

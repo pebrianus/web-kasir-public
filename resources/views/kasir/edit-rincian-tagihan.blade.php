@@ -238,13 +238,13 @@
                     perubahanList.forEach(function (item) {
                         html += `<li class="mb-2">
                             <strong>${item.nama}</strong><br>
-                            <small class="text-muted">
+                            <span class="text-muted">
                                 Qty: <span class="text-danger">${item.qtyAsli}</span>
                                 &rarr; <span class="text-success">${item.qtyBaru}</span>
                                 &nbsp;|&nbsp;
                                 Harga: <span class="text-danger">Rp ${formatRupiah(item.hargaAsli)}</span>
                                 &rarr; <span class="text-success">Rp ${formatRupiah(item.hargaBaru)}</span>
-                            </small>
+                            </span>
                         </li>`;
                     });
                     html += '</ul>';

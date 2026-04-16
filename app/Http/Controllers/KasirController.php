@@ -392,11 +392,18 @@ class KasirController extends Controller
     {
         $tagihanHead = KasirTagihanHead::findOrFail($id);
 
+        $totalSimgosTerkini = DB::connection('simgos_pembayaran')
+            ->table('tagihan')
+            ->where('ID', $tagihanHead->simgos_tagihan_id)
+            ->value('TOTAL');
+
+        $isDataValid = (float) $tagihanHead->total_asli_simgos === (float) $totalSimgosTerkini;
+
         $tagihanDetail = KasirTagihanDetail::where('kasir_tagihan_head_id', $id)
-            ->orderBy('simgos_jenis_tarif') // Kelompokkan per jenis
+            ->orderBy('simgos_jenis_tarif')
             ->get();
 
-        $metodeBayar = AppReferensi::where('JENIS', 1) // 1 = JENIS Metode Bayar
+        $metodeBayar = AppReferensi::where('JENIS', 1)
             ->where('STATUS', true)
             ->get();
 
@@ -407,6 +414,8 @@ class KasirController extends Controller
             'detail' => $tagihanDetail,
             'metodeBayar' => $metodeBayar,
             'jenis_kasir' => $jenis_kasir,
+            'isDataValid' => $isDataValid, // Kirim status validasi ke blade
+            // 'totalSimgosTerkini' => $totalSimgosTerkini // Opsional: kirim jika ingin menampilkan harga terbaru
         ]);
     }
 
