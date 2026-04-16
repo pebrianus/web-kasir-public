@@ -221,6 +221,11 @@
                                     <i class="fas fa-sync"></i>
                                 </button>
                             </form>
+
+                            <a href="{{ route('kasir.tagihan.rincian.edit', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
+                                class="btn btn-warning btn-sm" title="Edit Rincian Tagihan">
+                                <i class="fas fa-edit"></i>
+                            </a>
                         @endif
                         <a href="{{ route('kasir.pasien.tagihan', ['norm' => $head->simgos_norm, 'jenis_kasir' => $jenis_kasir]) }}"
                             class="btn btn-danger btn-sm" title="Kembali">
@@ -439,8 +444,8 @@
                         <i class="fas fa-arrow-left mr-1"></i> Kembali
                     </button>
                     <div class="d-flex align-items-center">
-                        <button type="button" class="btn btn-info" id="btnCheckAll" @if($itemAsuransi->isEmpty())
-                        disabled @endif>
+                        <button type="button" class="btn btn-info" id="btnCheckAll" @if($itemAsuransi->isEmpty()) disabled
+                        @endif>
                             <i class="fas fa-check-double mr-1"></i> Pilih Semua
                         </button>
                         <button type="button" class="btn btn-success ml-2" id="btnKonfirmasiPiutang"

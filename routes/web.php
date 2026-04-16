@@ -81,6 +81,16 @@ Route::post('/kasir/bagi-tagihan/{id}', [KasirController::class, 'storeBagiTagih
     ->name('kasir.tagihan.bagi.store')
     ->middleware('auth', 'kasir.jenis');
 
+// Halaman untuk menampilkan form edit rincian tagihan
+Route::get('/kasir/edit-rincian/{id}', [KasirController::class, 'showEditRincian'])
+    ->name('kasir.tagihan.rincian.edit')
+    ->middleware('auth', 'kasir.jenis');
+
+// Rute untuk MENYIMPAN hasil edit rincian tagihan
+Route::put('/kasir/edit-rincian/{id}', [KasirController::class, 'updateRincianTagihan'])
+    ->name('kasir.tagihan.rincian.update')
+    ->middleware('auth', 'kasir.jenis');
+
 Route::post('/kasir/bayar-tagihan/{id}', [KasirController::class, 'storePembayaran'])
     ->name('kasir.bayar-tagihan.store')
     ->middleware('auth', 'kasir.jenis');

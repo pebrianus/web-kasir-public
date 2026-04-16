@@ -527,16 +527,16 @@ class KasirController extends Controller
         }
 
         // Cek total SIMGOS
-        $totalSimgosTerkini = DB::connection('simgos_pembayaran')
-            ->table('tagihan')
-            ->where('ID', $tagihanHead->simgos_tagihan_id)
-            ->value('TOTAL');
+        // $totalSimgosTerkini = DB::connection('simgos_pembayaran')
+        //     ->table('tagihan')
+        //     ->where('ID', $tagihanHead->simgos_tagihan_id)
+        //     ->value('TOTAL');
 
-        if ((float) $tagihanHead->total_asli_simgos != (float) $totalSimgosTerkini) {
-            return redirect()
-                ->route('kasir.tagihan.lokal', ['id' => $id])
-                ->with('error', 'GAGAL BAYAR: Data SIMGOS telah berubah! Silakan refresh.');
-        }
+        // if ((float) $tagihanHead->total_asli_simgos != (float) $totalSimgosTerkini) {
+        //     return redirect()
+        //         ->route('kasir.tagihan.lokal', ['id' => $id])
+        //         ->with('error', 'GAGAL BAYAR: Data SIMGOS telah berubah! Silakan refresh.');
+        // }
 
         // Hitung nominal wajib (server-side)
         $nominalWajibBayar = $tagihanHead->total_asli_simgos
@@ -1517,5 +1517,86 @@ class KasirController extends Controller
         return redirect()
             ->route('dashboard')
             ->with('success', 'Semua sesi kasir untuk role Anda berhasil ditutup (' . implode(', ', $jenisList) . ').');
+    }
+
+    /**
+     * Menampilkan halaman edit rincian tagihan (qty & harga satuan)
+     */
+    public function showEditRincian($id)
+    {
+        $tagihanHead = KasirTagihanHead::findOrFail($id);
+        $tagihanDetail = KasirTagihanDetail::where('kasir_tagihan_head_id', $id)->get();
+
+        return view('kasir.edit-rincian-tagihan', [
+            'head' => $tagihanHead,
+            'detail' => $tagihanDetail,
+        ]);
+    }
+
+    /**
+     * Menyimpan perubahan rincian tagihan (qty & harga satuan).
+     * Setelah update, total di HEAD dihitung ulang dari semua detail.
+     */
+    public function updateRincianTagihan(Request $request, $id)
+    {
+        $tagihanHead = KasirTagihanHead::findOrFail($id);
+        $jenisKasir = $request->jenis_kasir;
+        $items = $request->input('items', []);
+
+        DB::transaction(function () use ($items, $tagihanHead) {
+
+            foreach ($items as $detailId => $data) {
+                $item = KasirTagihanDetail::where('id', $detailId)
+                    ->where('kasir_tagihan_head_id', $tagihanHead->id)
+                    ->firstOrFail();
+
+                $qty = (float) $data['qty'];
+                $hargaSatuan = (float) $data['harga_satuan'];
+                $subtotalBaru = $qty * $hargaSatuan;
+                $subtotalLama = (float) $item->subtotal;
+
+                // Jika item sudah pernah dibagi (asuransi/pasien terisi),
+                // recalculate secara proporsional agar tidak kehilangan data bagi tagihan.
+                $sudahDibagi = $item->nominal_ditanggung_asuransi > 0
+                    || $item->nominal_ditanggung_pasien > 0;
+
+                if ($sudahDibagi && $subtotalLama > 0) {
+                    $rasio = $subtotalBaru / $subtotalLama;
+                    $nominalAsuransiBaru = round($item->nominal_ditanggung_asuransi * $rasio, 2);
+                    $nominalAsuransiBaru = min($nominalAsuransiBaru, $subtotalBaru); // tidak boleh melebihi subtotal baru
+                    $nominalPasienBaru = round($subtotalBaru - $nominalAsuransiBaru, 2);
+                } else {
+                    // Belum pernah dibagi, semua dibebankan ke pasien sementara
+                    $nominalAsuransiBaru = 0;
+                    $nominalPasienBaru = $subtotalBaru;
+                }
+
+                $item->update([
+                    'qty' => $qty,
+                    'harga_satuan' => $hargaSatuan,
+                    'subtotal' => $subtotalBaru,
+                    'nominal_ditanggung_asuransi' => $nominalAsuransiBaru,
+                    'nominal_ditanggung_pasien' => $nominalPasienBaru,
+                ]);
+            }
+
+            // Hitung ulang total HEAD dari SELURUH detail (termasuk yang tidak diedit)
+            $totalDariDetail = KasirTagihanDetail::where('kasir_tagihan_head_id', $tagihanHead->id)->sum('subtotal');
+            $totalAsuransi = KasirTagihanDetail::where('kasir_tagihan_head_id', $tagihanHead->id)->sum('nominal_ditanggung_asuransi');
+            $totalPasienKotor = KasirTagihanDetail::where('kasir_tagihan_head_id', $tagihanHead->id)->sum('nominal_ditanggung_pasien');
+
+            $diskon = $tagihanHead->diskon_simgos ?? 0;
+            $totalBayarPasienNet = max(0, $totalPasienKotor - $diskon);
+
+            $tagihanHead->update([
+                'total_asli_simgos' => $totalDariDetail,
+                'total_bayar_asuransi' => $totalAsuransi,
+                'total_bayar_pasien' => $totalBayarPasienNet,
+            ]);
+        });
+
+        return redirect()
+            ->route('kasir.tagihan.lokal', ['id' => $id, 'jenis_kasir' => $jenisKasir])
+            ->with('success', 'Rincian tagihan berhasil diperbarui!');
     }
 }
