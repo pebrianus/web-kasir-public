@@ -114,6 +114,11 @@ Route::get('/kasir/rincian/asuransi/cetak/{id}', [KasirController::class, 'cetak
     ->name('rincian.cetak.asuransi')
     ->middleware('auth', 'kasir.jenis');
 
+    // Rute untuk mencetak rincian tagihan asuransi
+Route::get('/kasir/rincian/gabungan/cetak/{id}', [KasirController::class, 'cetakRincianGabungan'])
+    ->name('rincian.cetak.gabungan')
+    ->middleware('auth', 'kasir.jenis');
+
 // Rute untuk mencetak rincian tagihan pasien
 Route::get('/kasir/rincian/pasien/cetak/{id}', [KasirController::class, 'cetakRincianPasien'])
     ->name('rincian.cetak.pasien')

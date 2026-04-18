@@ -595,14 +595,14 @@ class KasirController extends Controller
 
                 // Rekap porsi PASIEN ke kasir_pembayaran (jika ada)
                 // if ($nominalBayarPasien > 0) {
-                    KasirPembayaran::create([
-                        'kasir_tagihan_head_id' => $tagihanHead->id,
-                        'user_id' => Auth::id(),
-                        'metode_bayar_id' => $request->metode_bayar_id,
-                        'nominal_bayar' => $nominalBayarPasien,
-                        'kasir_sesi_id' => $sesiAktif->id,
-                        'keterangan' => 'Bayar Tagihan Pasien Asuransi',
-                    ]);
+                KasirPembayaran::create([
+                    'kasir_tagihan_head_id' => $tagihanHead->id,
+                    'user_id' => Auth::id(),
+                    'metode_bayar_id' => $request->metode_bayar_id,
+                    'nominal_bayar' => $nominalBayarPasien,
+                    'kasir_sesi_id' => $sesiAktif->id,
+                    'keterangan' => 'Bayar Tagihan Pasien Asuransi',
+                ]);
                 // }
 
                 // Simpan porsi ASURANSI ke tabel piutang
@@ -1073,6 +1073,13 @@ class KasirController extends Controller
             $grandTotal += $dibayarAsuransi;
         }
 
+        // Urutkan $detailByJenis berdasarkan nama jenis tarif (abjad)
+        uksort($detailByJenis, function ($a, $b) use ($jenisTarifList) {
+            $namaA = $jenisTarifList[$a] ?? 'ZZZ'; // Kalau tidak ada, taruh di akhir
+            $namaB = $jenisTarifList[$b] ?? 'ZZZ';
+            return strcmp($namaA, $namaB);
+        });
+
         $dataUntukView = [
             'head' => $tagihanHead,
             'detailByJenis' => $detailByJenis,
@@ -1172,6 +1179,14 @@ class KasirController extends Controller
             $grandTotal += $dibayarPasien;
         }
 
+        // Urutkan $detailByJenis berdasarkan nama jenis tarif (abjad)
+        // Urutkan $detailByJenis berdasarkan nama jenis tarif (abjad)
+        uksort($detailByJenis, function ($a, $b) use ($jenisTarifList) {
+            $namaA = $jenisTarifList[$a] ?? 'ZZZ'; // Kalau tidak ada, taruh di akhir
+            $namaB = $jenisTarifList[$b] ?? 'ZZZ';
+            return strcmp($namaA, $namaB);
+        });
+
         // 6. Data untuk view
         $dataUntukView = [
             'head' => $tagihanHead,
@@ -1188,6 +1203,111 @@ class KasirController extends Controller
         $pdf->setPaper([0, 0, 612.28, 842], 'portrait');
 
         return $pdf->stream('rincian-pasien-' . $tagihanHead->simgos_tagihan_id . '.pdf');
+    }
+
+    public function cetakRincianGabungan(Request $request, $id)
+    {
+        $jenis_kasir = $request->input('jenis_kasir');
+        $jenisList = [
+            1 => 'Rawat Jalan',
+            2 => 'IGD',
+            3 => 'Rawat Inap',
+            4 => 'Laboratorium',
+            5 => 'Radiologi',
+        ];
+        $jenis_kasir_text = $jenisList[$jenis_kasir] ?? 'Tidak diketahui';
+
+        $tagihanHead = KasirTagihanHead::findOrFail($id);
+        $tipeKuitansi = 'Asuransi';
+
+        // Ambil SEMUA detail (bukan hanya yang ditanggung asuransi)
+        $detail = KasirTagihanDetail::where('kasir_tagihan_head_id', $id)->get();
+
+        $jenisTarifList = [
+            1 => 'Administrasi',
+            2 => 'Akomodasi',
+            3 => 'Pemeriksaan Dokter',
+            4 => 'Farmasi',
+            6 => 'Gas Medis / Oksigen',
+            7 => 'Pemeriksaan Radiologi',
+            8 => 'Pemeriksaan Lab',
+        ];
+
+        $detailByJenis = [];
+        $grandTotalHarga = 0;
+        $grandTotalAsuransi = 0;
+        $grandTotalSelisih = 0;
+
+        foreach ($detail as $item) {
+            $jenis = $item->simgos_jenis_tarif;
+            $hargaTotal = $item->subtotal;
+            $ditanggung = $item->nominal_ditanggung_asuransi ?? 0;
+            $selisih = $hargaTotal - $ditanggung;
+
+            // Khusus tindakan medis
+            if ($jenis == 3) {
+                $tindakanInfo = DB::connection('simgos_pembayaran')
+                    ->table('layanan.tindakan_medis as tm')
+                    ->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')
+                    ->where('tm.ID', $item->simgos_ref_id)
+                    ->select('t.JENIS')
+                    ->first();
+
+                if ($tindakanInfo) {
+                    switch ($tindakanInfo->JENIS) {
+                        case 7:
+                            $jenis = 7;
+                            break;
+                        case 8:
+                            $jenis = 8;
+                            break;
+                        case 5:
+                            $jenis = 'keperawatan';
+                            $jenisTarifList['keperawatan'] = 'Tindakan Keperawatan';
+                            break;
+                        default:
+                            $jenis = 3;
+                            break;
+                    }
+                }
+            }
+
+            $detailByJenis[$jenis][] = [
+                'uraian' => $item->deskripsi_item,
+                'qty' => $item->qty,
+                'harga' => $item->harga_satuan,
+                'subtotal' => $hargaTotal,
+                'asuransi' => $ditanggung,
+                'selisih' => $selisih,
+            ];
+
+            $grandTotalHarga += $hargaTotal;
+            $grandTotalAsuransi += $ditanggung;
+            $grandTotalSelisih += $selisih;
+        }
+
+        // Urutkan per abjad nama jenis tarif
+        uksort($detailByJenis, function ($a, $b) use ($jenisTarifList) {
+            $namaA = $jenisTarifList[$a] ?? 'ZZZ';
+            $namaB = $jenisTarifList[$b] ?? 'ZZZ';
+            return strcmp($namaA, $namaB);
+        });
+
+        $dataUntukView = [
+            'head' => $tagihanHead,
+            'detailByJenis' => $detailByJenis,
+            'grandTotalHarga' => $grandTotalHarga,
+            'grandTotalAsuransi' => $grandTotalAsuransi,
+            'grandTotalSelisih' => $grandTotalSelisih,
+            'tipeKuitansi' => $tipeKuitansi,
+            'namaKasir' => Auth::user()->nama,
+            'jenis_kasir_text' => $jenis_kasir_text,
+            'jenisTarifList' => $jenisTarifList,
+        ];
+
+        $pdf = PDF::loadView('reports.rincian-gabungan', $dataUntukView);
+        $pdf->setPaper([0, 0, 842, 595], 'landscape'); // landscape karena kolom banyak
+        return $pdf->stream('rincian-perbandingan-' . $tagihanHead->simgos_tagihan_id . '.pdf');
     }
 
     public function cetakRincianLab(Request $request, $id)

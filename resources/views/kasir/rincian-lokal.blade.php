@@ -298,6 +298,12 @@
                             <span class="text">Cetak Rincian Asuransi</span>
                         </a>
 
+                        <a href="{{ route('rincian.cetak.gabungan', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
+                            target="_blank" class="btn btn-secondary btn-icon-split btn-block mb-2">
+                            <span class="icon text-white-50"><i class="fas fa-file-invoice"></i></span>
+                            <span class="text">Cetak Rincian Gabungan</span>
+                        </a>
+
                         <a href="{{ route('rincian.cetak.resep', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
                             target="_blank" class="btn btn-secondary btn-icon-split btn-block mb-2">
                             <span class="icon text-white-50"> <i class="fas fa-capsules"></i> </span>
