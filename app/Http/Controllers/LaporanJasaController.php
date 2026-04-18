@@ -108,8 +108,8 @@ class LaporanJasaController extends Controller
         }
 
         /* =========================
-            * 2. TAGIHAN RADIOLOGI
-            * ========================= */
+         * 2. TAGIHAN RADIOLOGI
+         * ========================= */
         $tagihanRadiologiIds = Tagihan::whereIn(
             'ID',
             $tagihanHead->pluck('simgos_tagihan_id')
@@ -124,8 +124,8 @@ class LaporanJasaController extends Controller
             ->values();
 
         /* =========================
-            * 3. PENDAFTARAN → KUNJUNGAN
-            * ========================= */
+         * 3. PENDAFTARAN → KUNJUNGAN
+         * ========================= */
         $pendaftaran = TagihanPendaftaran::whereIn(
             'TAGIHAN',
             $tagihanRadiologiIds
@@ -139,8 +139,8 @@ class LaporanJasaController extends Controller
             ->get(array('NOMOR', 'NOPEN'));
 
         /* =========================
-            * 4. TARIF TERBARU
-            * ========================= */
+         * 4. TARIF TERBARU
+         * ========================= */
         $tarifTerbaru = DB::raw("
             (
                 SELECT tt1.*
@@ -451,8 +451,8 @@ class LaporanJasaController extends Controller
         }
 
         /* =========================
-            * 2. TAGIHAN LABORATORIUM
-            * ========================= */
+         * 2. TAGIHAN LABORATORIUM
+         * ========================= */
         $tagihanLabIds = Tagihan::whereIn(
             'ID',
             $tagihanHead->pluck('simgos_tagihan_id')
@@ -467,8 +467,8 @@ class LaporanJasaController extends Controller
             ->values();
 
         /* =========================
-            * 3. PENDAFTARAN → KUNJUNGAN
-            * ========================= */
+         * 3. PENDAFTARAN → KUNJUNGAN
+         * ========================= */
 
         $idRuanganLab = [
             '101030507', // Laboratorium
@@ -490,8 +490,8 @@ class LaporanJasaController extends Controller
             ->get(array('NOMOR', 'NOPEN'));
 
         /* =========================
-            * 4. TARIF TERBARU
-            * ========================= */
+         * 4. TARIF TERBARU
+         * ========================= */
         $tarifTerbaru = DB::raw("
             (
                 SELECT tt1.*
@@ -716,5 +716,54 @@ class LaporanJasaController extends Controller
             Carbon::now()->format('YmdHis') . '.pdf';
 
         return $pdf->stream($namaFile);
+    }
+
+    public function indexJasaDokter(Request $request)
+    {
+        if ($request->isMethod('post')) {
+
+            session(array(
+                'laporan_jasa_lab_filter' => $request->only(array(
+                    'tanggal_dari',
+                    'tanggal_sampai',
+                    'asuransi',
+                    'petugas',
+                    'jenis_petugas',
+                ))
+            ));
+
+            return redirect()->route('laporan.jasa.lab.index');
+        }
+
+        $filter = session('laporan_jasa_lab_filter', array());
+
+        $data = $this->buildLaporanJasaLab($filter);
+        // dd($data->toArray());
+
+
+        return view('laporan.index-jasa-dokter', array(
+            'data' => $data,
+            'asuransiList' => $this->getAsuransiList(),
+            'dokterList' => $this->getDokterList(),
+        ));
+    }
+
+    public function getDokterList()
+    {
+        $dokterList = Pegawai::select(
+            'dokter.ID as ID_DOKTER',
+            Pegawai::selectNamaLengkap('nama_dokter'),
+        )
+            ->join('dokter', function ($join) {
+                $join->on('dokter.NIP', '=', 'pegawai.NIP')
+                    ->where('dokter.STATUS', 1);
+            })
+            ->where('pegawai.STATUS', 1)
+            ->orderBy('nama_dokter')
+            ->get();
+
+
+            // dd($dokterList->toArray());
+        return $dokterList;
     }
 }

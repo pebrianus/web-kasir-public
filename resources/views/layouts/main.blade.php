@@ -44,12 +44,16 @@
         }
     </style>
 
+    @yield('styles')
+
 </head>
 
 {{-- @php
 // Cek apakah ada sesi kasir yang sedang 'BUKA' di seluruh sistem
 $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
 @endphp --}}
+
+@yield('scripts')
 
 <body id="page-top">
 
@@ -168,6 +172,9 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
                             </a>
                             <a class="collapse-item" href="{{ route('laporan.jasa.lab.index') }}">
                                 Laporan Jasa Laboratorium
+                            </a>
+                            <a class="collapse-item" href="{{ route('laporan.jasa.dokter.index') }}">
+                                Laporan Jasa Dokter
                             </a>
                         </div>
                     </div>
@@ -366,6 +373,8 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
     </script>
 
     @stack('scripts')
+
+
 
     {{-- Hapus script chart jika tidak dipakai di semua halaman --}}
     {{--

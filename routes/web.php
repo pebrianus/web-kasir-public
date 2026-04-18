@@ -168,11 +168,14 @@ Route::middleware(['auth', 'kasir.jenis'])->group(function () {
     Route::get('/laporan/jasa-lab', [LaporanJasaController::class, 'indexJasaLab'])
         ->name('laporan.jasa.lab.index');
 
-    Route::post('/laporan/jasa-lab', [LaporanJasaController::class, 'indexJasaLab'])
+        Route::post('/laporan/jasa-lab', [LaporanJasaController::class, 'indexJasaLab'])
         ->name('laporan.jasa.lab.filter');
 
-    Route::get('/laporan/jasa-lab/cetak', [LaporanJasaController::class, 'cetakLaporanJasaLab'])
+        Route::get('/laporan/jasa-lab/cetak', [LaporanJasaController::class, 'cetakLaporanJasaLab'])
         ->name('laporan.jasa.lab.cetak');
+
+        Route::get('/laporan/jasa-dokter', [LaporanJasaController::class, 'indexJasaDokter'])
+            ->name('laporan.jasa.dokter.index');
 });
 
 // Route batal tagihan
