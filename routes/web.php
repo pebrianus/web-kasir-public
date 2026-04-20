@@ -114,7 +114,7 @@ Route::get('/kasir/rincian/asuransi/cetak/{id}', [KasirController::class, 'cetak
     ->name('rincian.cetak.asuransi')
     ->middleware('auth', 'kasir.jenis');
 
-    // Rute untuk mencetak rincian tagihan asuransi
+// Rute untuk mencetak rincian tagihan asuransi
 Route::get('/kasir/rincian/gabungan/cetak/{id}', [KasirController::class, 'cetakRincianGabungan'])
     ->name('rincian.cetak.gabungan')
     ->middleware('auth', 'kasir.jenis');
@@ -168,14 +168,21 @@ Route::middleware(['auth', 'kasir.jenis'])->group(function () {
     Route::get('/laporan/jasa-lab', [LaporanJasaController::class, 'indexJasaLab'])
         ->name('laporan.jasa.lab.index');
 
-        Route::post('/laporan/jasa-lab', [LaporanJasaController::class, 'indexJasaLab'])
+    Route::post('/laporan/jasa-lab', [LaporanJasaController::class, 'indexJasaLab'])
         ->name('laporan.jasa.lab.filter');
 
-        Route::get('/laporan/jasa-lab/cetak', [LaporanJasaController::class, 'cetakLaporanJasaLab'])
+    Route::get('/laporan/jasa-lab/cetak', [LaporanJasaController::class, 'cetakLaporanJasaLab'])
         ->name('laporan.jasa.lab.cetak');
 
-        Route::get('/laporan/jasa-dokter', [LaporanJasaController::class, 'indexJasaDokter'])
-            ->name('laporan.jasa.dokter.index');
+    Route::get('/laporan/jasa-dokter', [LaporanJasaController::class, 'indexJasaDokter'])
+        ->name('laporan.jasa.dokter.index');
+
+    Route::post('/laporan/jasa-dokter', [LaporanJasaController::class, 'indexJasaDokter'])
+        ->name('laporan.jasa.dokter.filter');
+
+    Route::get('/laporan/jasa-dokter/cetak', [LaporanJasaController::class, 'cetakLaporanJasaDokter'])
+        ->name('laporan.jasa.dokter.cetak');
+
 });
 
 // Route batal tagihan

@@ -723,21 +723,22 @@ class LaporanJasaController extends Controller
         if ($request->isMethod('post')) {
 
             session(array(
-                'laporan_jasa_lab_filter' => $request->only(array(
+                'laporan_jasa_dokter_filter' => $request->only(array(
                     'tanggal_dari',
                     'tanggal_sampai',
                     'asuransi',
                     'petugas',
+                    'dokter',
                     'jenis_petugas',
                 ))
             ));
 
-            return redirect()->route('laporan.jasa.lab.index');
+            return redirect()->route('laporan.jasa.dokter.index');
         }
 
-        $filter = session('laporan_jasa_lab_filter', array());
+        $filter = session('laporan_jasa_dokter_filter', array());
 
-        $data = $this->buildLaporanJasaLab($filter);
+        $data = $this->buildLaporanJasaDokter($filter);
         // dd($data->toArray());
 
 
@@ -763,7 +764,292 @@ class LaporanJasaController extends Controller
             ->get();
 
 
-            // dd($dokterList->toArray());
+        // dd($dokterList->toArray());
         return $dokterList;
+    }
+
+    private function buildLaporanJasaDokter(array $filter)
+    {
+        $tanggalDari = isset($filter['tanggal_dari']) ? $filter['tanggal_dari'] : null;
+        $tanggalSampai = isset($filter['tanggal_sampai']) ? $filter['tanggal_sampai'] : null;
+        $asuransi = isset($filter['asuransi']) ? $filter['asuransi'] : null;
+        $petugasFilter = isset($filter['dokter']) ? $filter['dokter'] : null;
+        $jenisPetugas = isset($filter['jenis_petugas']) ? $filter['jenis_petugas'] : null;
+
+        /* =========================
+         * 1. TAGIHAN KASIR (LUNAS)
+         * ========================= */
+        $queryTagihan = KasirTagihanHead::select(
+            'simgos_tagihan_id',
+            'simgos_norm',
+            'nama_pasien',
+            'nama_asuransi',
+            'simgos_tanggal_tagihan'
+        )->where('status_kasir', 'lunas');
+
+        if ($asuransi && $asuransi !== 'Semua') {
+            $queryTagihan->where('nama_asuransi', 'LIKE', '%' . $asuransi . '%');
+        }
+
+        if ($tanggalDari && $tanggalSampai) {
+            $queryTagihan->whereBetween('simgos_tanggal_tagihan', array(
+                Carbon::parse($tanggalDari)->startOfDay(),
+                Carbon::parse($tanggalSampai)->endOfDay(),
+            ));
+        } else {
+            $queryTagihan->whereDate('simgos_tanggal_tagihan', Carbon::today());
+        }
+
+        $tagihanHead = $queryTagihan->get();
+        if ($tagihanHead->isEmpty()) {
+            return collect();
+        }
+
+        /* =========================
+         * 2. TAGIHAN DOKTER
+         * ========================= */
+        $tagihanDokterIds = Tagihan::whereIn(
+            'ID',
+            $tagihanHead->pluck('simgos_tagihan_id')
+        )->where(function ($q) {
+            $q->where('PROSEDUR_NON_BEDAH', '>', 0)
+                ->orWhere('PROSEDUR_BEDAH', '>', 0)
+                ->orWhere('KONSULTASI', '>', 0)
+                ->orWhere('TENAGA_AHLI', '>', 0)
+                ->orWhere('KEPERAWATAN', '>', 0);
+        })->pluck('ID');
+
+        $tagihanHeadDokter = $tagihanHead
+            ->whereIn('simgos_tagihan_id', $tagihanDokterIds)
+            ->values();
+
+        /* =========================
+         * 3. PENDAFTARAN → KUNJUNGAN
+         * ========================= */
+
+        $pendaftaran = TagihanPendaftaran::whereIn(
+            'TAGIHAN',
+            $tagihanDokterIds
+        )->get(array('TAGIHAN', 'PENDAFTARAN'));
+
+        $kunjungan = Kunjungan::whereIn(
+            'NOPEN',
+            $pendaftaran->pluck('PENDAFTARAN')
+        )
+            // ->whereIn('RUANGAN', $idRuanganLab)
+            ->get(array('NOMOR', 'NOPEN'));
+
+        /* =========================
+         * 4. TARIF TERBARU
+         * ========================= */
+        $tarifTerbaru = DB::raw("
+            (
+                SELECT tt1.*
+                FROM master.tarif_tindakan tt1
+                WHERE tt1.ID = (
+                    SELECT MAX(tt2.ID)
+                    FROM master.tarif_tindakan tt2
+                    WHERE tt2.TINDAKAN = tt1.TINDAKAN
+                        AND tt2.STATUS = 1
+                )
+            ) as tt
+        ");
+
+        /* =========================
+         * 5. TINDAKAN
+         * ========================= */
+        $tindakan = TindakanMedis::join(
+            DB::raw('master.tindakan as t'),
+            't.ID',
+            '=',
+            'tindakan_medis.TINDAKAN'
+        )
+            ->leftJoin($tarifTerbaru, 'tt.TINDAKAN', '=', 'tindakan_medis.TINDAKAN')
+            ->whereIn('tindakan_medis.KUNJUNGAN', $kunjungan->pluck('NOMOR'))
+            ->where('tindakan_medis.STATUS', 1) // Filter tindakan aktif
+            ->select(array(
+                'tindakan_medis.ID as TINDAKAN_MEDIS_ID',
+                'tindakan_medis.KUNJUNGAN',
+                't.NAMA as NAMA_TINDAKAN',
+                'tindakan_medis.TANGGAL',
+                'tt.DOKTER_OPERATOR',
+                'tt.PARAMEDIS',
+                'tt.TARIF',
+            ))
+            ->get();
+
+        /* =========================
+         * 6. PETUGAS
+         * ========================= */
+        $petugasTindakan = PetugasTindakanMedis::from('petugas_tindakan_medis as ptm')
+            ->leftJoin('master.dokter as d', function ($j) {
+                $j->on('d.ID', '=', 'ptm.MEDIS')
+                    ->where('ptm.JENIS', 1);
+            })
+            ->leftJoin('master.pegawai as p_langsung', function ($j) {
+                $j->on('p_langsung.ID', '=', 'ptm.MEDIS') // Langsung ke ID Pegawai
+                    ->where('ptm.JENIS', 6);
+            })
+            ->leftJoin(DB::raw('master.pegawai as p'), function ($j) {
+                $j->on('p.NIP', '=', DB::raw("
+                CASE
+                    WHEN ptm.JENIS = 1 THEN d.NIP
+                    WHEN ptm.JENIS = 6 THEN p_langsung.NIP
+                END
+            "));
+            })
+            ->whereIn('ptm.TINDAKAN_MEDIS', $tindakan->pluck('TINDAKAN_MEDIS_ID'))
+            ->where('ptm.STATUS', 1);
+
+        if ($jenisPetugas) {
+            $petugasTindakan->where('ptm.JENIS', $jenisPetugas);
+        }
+
+        if ($petugasFilter) {
+            $petugasTindakan->where('ptm.MEDIS', $petugasFilter);
+        }
+
+        $petugasTindakan = $petugasTindakan
+            ->select(array(
+                'ptm.TINDAKAN_MEDIS',
+                'ptm.JENIS',
+                DB::raw("master.getNamaLengkapPegawai(p.NIP) as NAMA_PETUGAS"),
+            ))
+            ->get()
+            ->groupBy('TINDAKAN_MEDIS');
+
+        /* =========================
+         * 7. RAKIT LAPORAN
+         * ========================= */
+        $laporan = $tagihanHeadDokter->map(function ($tagihan) use ($pendaftaran, $kunjungan, $tindakan, $petugasTindakan, $jenisPetugas, $petugasFilter) {
+
+            $nopen = $pendaftaran
+                ->where('TAGIHAN', $tagihan->simgos_tagihan_id)
+                ->pluck('PENDAFTARAN');
+
+            $kunjunganIds = $kunjungan
+                ->whereIn('NOPEN', $nopen)
+                ->pluck('NOMOR');
+
+            $detailTindakan = $tindakan
+                ->whereIn('KUNJUNGAN', $kunjunganIds)
+                ->map(function ($tdk) use ($petugasTindakan, $jenisPetugas, $petugasFilter) {
+
+                    if ($jenisPetugas == 1) {
+                        $fee = (int) $tdk->DOKTER_OPERATOR;
+                    } elseif ($jenisPetugas == 6) {
+                        $fee = (int) $tdk->PARAMEDIS;
+                    } else {
+                        $fee = (int) $tdk->TARIF;
+                    }
+
+                    $petugas = isset($petugasTindakan[$tdk->TINDAKAN_MEDIS_ID])
+                        ? $petugasTindakan[$tdk->TINDAKAN_MEDIS_ID]
+                        : collect();
+
+                    if ($petugasFilter && $petugas->isEmpty()) {
+                        return null;
+                    }
+
+                    // ⛔ skip tindakan fee 0 saat filter petugas
+                    if ($jenisPetugas && $fee <= 0) {
+                        return null;
+                    }
+
+                    return array(
+                        'nama_tindakan' => $tdk->NAMA_TINDAKAN,
+                        'tanggal' => $tdk->TANGGAL,
+                        'tarif' => (int) $tdk->TARIF,
+                        'fee_petugas' => $fee,
+                        'petugas' => $petugas->map(function ($p) {
+                            return array(
+                                'nama' => $p->NAMA_PETUGAS,
+                                'jenis' => $p->JENIS,
+                            );
+                        })->values(),
+                    );
+                })
+                ->filter()
+                ->values();
+
+            // ⛔ skip pasien jika tidak ada fee saat filter petugas
+            if ($jenisPetugas && $detailTindakan->isEmpty()) {
+                return null;
+            }
+
+            // ==========================================
+            // KODE TAMBAHAN UNTUK CEK TOTAL 0
+            // ==========================================
+            $totalTarif = $detailTindakan->sum('tarif');
+            $totalFee = $detailTindakan->sum('fee_petugas');
+
+            // ⛔ skip pasien jika total tarif dan fee sama-sama 0
+            if ($totalTarif == 0 && $totalFee == 0) {
+                return null;
+            }
+            // ==========================================
+
+            return array(
+                'no_rm' => $tagihan->simgos_norm,
+                'nama_pasien' => $tagihan->nama_pasien,
+                'tanggal_tagihan' => $tagihan->simgos_tanggal_tagihan,
+                'nama_asuransi' => $tagihan->nama_asuransi,
+                'tindakan' => $detailTindakan,
+                'total_tarif' => $detailTindakan->sum('tarif'),
+                'total_fee' => $detailTindakan->sum('fee_petugas'),
+            );
+        });
+
+        // dd($laporan->toArray());
+
+        return $laporan->filter()->values();
+    }
+
+    public function cetakLaporanJasaDokter()
+    {
+        $filter = session('laporan_jasa_dokter_filter', []);
+        $tanggalDari = isset($filter['tanggal_dari'])
+            ? $filter['tanggal_dari']
+            : Carbon::today()->toDateString();
+
+        $tanggalSampai = isset($filter['tanggal_sampai'])
+            ? $filter['tanggal_sampai']
+            : Carbon::today()->toDateString();
+
+        $asuransi = isset($filter['asuransi'])
+            ? $filter['asuransi']
+            : 'Semua';
+
+        $petugas = isset($filter['petugas'])
+            ? $filter['petugas']
+            : null;
+
+        // ambil data laporan
+        $data = $this->buildLaporanJasaDokter($filter);
+
+        // ===============================
+        // TESTING PDF: DUPLIKAT DATA 30x
+        // ===============================
+        // $testingMultiply = 30;
+
+        // $data = collect(range(1, $testingMultiply))
+        //     ->flatMap(function () use ($data) {
+        //         return $data;
+        //     })
+        //     ->values();
+
+
+        $pdf = Pdf::loadView('reports.laporan-jasa-dokter', [
+            'data' => $data,
+            'tanggalDari' => $tanggalDari,
+            'tanggalSampai' => $tanggalSampai,
+            'asuransi' => $asuransi,
+            'petugas' => $petugas,
+        ])->setPaper('A4', 'portrait');
+
+        $namaFile = 'Laporan-Jasa-Dokter-' .
+            Carbon::now()->format('YmdHis') . '.pdf';
+
+        return $pdf->stream($namaFile);
     }
 }

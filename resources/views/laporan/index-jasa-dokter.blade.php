@@ -38,7 +38,7 @@
         <div class="card-body">
 
             {{-- Form Filter Tanggal --}}
-            <form method="POST" action="{{ route('laporan.jasa.lab.filter') }}">
+            <form method="POST" action="{{ route('laporan.jasa.dokter.filter') }}">
                 @csrf
                 <div class="row align-items-end">
 
@@ -46,14 +46,14 @@
                     <div class="col-md-3">
                         <label class="small">Tanggal Dari</label>
                         <input type="date" class="form-control" name="tanggal_dari"
-                            value="{{ session('laporan_jasa_lab_filter.tanggal_dari') }}">
+                            value="{{ session('laporan_jasa_dokter_filter.tanggal_dari') }}">
                     </div>
 
                     {{-- Tanggal Sampai --}}
                     <div class="col-md-3">
                         <label class="small">Tanggal Sampai</label>
                         <input type="date" class="form-control" name="tanggal_sampai"
-                            value="{{ session('laporan_jasa_lab_filter.tanggal_sampai') }}">
+                            value="{{ session('laporan_jasa_dokter_filter.tanggal_sampai') }}">
                     </div>
 
                     {{-- Asuransi --}}
@@ -62,13 +62,13 @@
 
                         <select class="form-control" name="asuransi">
                             <option value="Semua"
-                                {{ session('laporan_jasa_lab_filter.asuransi', 'Semua') == 'Semua' ? 'selected' : '' }}>
+                                {{ session('laporan_jasa_dokter_filter.asuransi', 'Semua') == 'Semua' ? 'selected' : '' }}>
                                 -- Semua Asuransi --
                             </option>
 
                             @foreach ($asuransiList as $asuransi)
                                 <option value="{{ $asuransi->DESKRIPSI }}"
-                                    {{ session('laporan_jasa_lab_filter.asuransi') == $asuransi->DESKRIPSI ? 'selected' : '' }}>
+                                    {{ session('laporan_jasa_dokter_filter.asuransi') == $asuransi->DESKRIPSI ? 'selected' : '' }}>
                                     {{ $asuransi->DESKRIPSI }}
                                 </option>
                             @endforeach
@@ -117,7 +117,7 @@
 
                             {{-- KANAN: Cetak --}}
                             <div>
-                                <a href="{{ route('laporan.jasa.lab.cetak') }}" target="_blank"
+                                <a href="{{ route('laporan.jasa.dokter.cetak') }}" target="_blank"
                                     class="btn btn-success btn-sm">
                                     <i class="fas fa-print fa-sm me-1"></i> Cetak
                                 </a>
