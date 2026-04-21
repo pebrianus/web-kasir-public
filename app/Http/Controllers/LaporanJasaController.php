@@ -839,44 +839,42 @@ class LaporanJasaController extends Controller
             // ->whereIn('RUANGAN', $idRuanganLab)
             ->get(array('NOMOR', 'NOPEN'));
 
-        /* =========================
-         * 4. TARIF TERBARU
-         * ========================= */
-        $tarifTerbaru = DB::raw("
-            (
-                SELECT tt1.*
-                FROM master.tarif_tindakan tt1
-                WHERE tt1.ID = (
-                    SELECT MAX(tt2.ID)
-                    FROM master.tarif_tindakan tt2
-                    WHERE tt2.TINDAKAN = tt1.TINDAKAN
-                        AND tt2.STATUS = 1
-                )
-            ) as tt
-        ");
 
         /* =========================
-         * 5. TINDAKAN
+         * 4 & 5. TINDAKAN & TARIF HISTORIS (Saat Pasien Ditagih)
          * ========================= */
-        $tindakan = TindakanMedis::join(
-            DB::raw('master.tindakan as t'),
-            't.ID',
-            '=',
-            'tindakan_medis.TINDAKAN'
-        )
-            ->leftJoin($tarifTerbaru, 'tt.TINDAKAN', '=', 'tindakan_medis.TINDAKAN')
+
+        $tindakan = TindakanMedis::join(DB::raw('master.tindakan as t'), 't.ID', '=', 'tindakan_medis.TINDAKAN')
+            // 1. Sambungkan ke rincian_tagihan untuk melihat 'nota' spesifik tindakan ini
+            // (Asumsi rt.JENIS = 3 merujuk ke tindakan medis, sesuai dengan Stored Procedure-mu)
+            ->leftJoin('pembayaran.rincian_tagihan as rt', function ($join) {
+                $join->on('rt.REF_ID', '=', 'tindakan_medis.ID')
+                     ->where('rt.JENIS', 3);
+            })
+            // 2. Sambungkan ke tabel master tarif berbekal TARIF_ID dari rincian_tagihan
+            // Ini otomatis menarik harga riwayat saat transaksi terjadi
+            ->leftJoin('master.tarif_tindakan as tt', 'tt.ID', '=', 'rt.TARIF_ID')
+
             ->whereIn('tindakan_medis.KUNJUNGAN', $kunjungan->pluck('NOMOR'))
-            ->where('tindakan_medis.STATUS', 1) // Filter tindakan aktif
+            ->whereIn('tindakan_medis.STATUS', [1]) // Filter tindakan aktif
             ->select(array(
                 'tindakan_medis.ID as TINDAKAN_MEDIS_ID',
                 'tindakan_medis.KUNJUNGAN',
                 't.NAMA as NAMA_TINDAKAN',
                 'tindakan_medis.TANGGAL',
+
+                // Nilai di bawah ini sekarang dijamin adalah nilai historis (harga lama)
                 'tt.DOKTER_OPERATOR',
+                'tt.DOKTER_ANASTESI',
                 'tt.PARAMEDIS',
                 'tt.TARIF',
+
+                // Boleh ditambahkan jika butuh ngecek:
+                // 'rt.TARIF_ID',
             ))
             ->get();
+
+        // dd($tindakan->toArray());
 
         /* =========================
          * 6. PETUGAS
@@ -884,7 +882,11 @@ class LaporanJasaController extends Controller
         $petugasTindakan = PetugasTindakanMedis::from('petugas_tindakan_medis as ptm')
             ->leftJoin('master.dokter as d', function ($j) {
                 $j->on('d.ID', '=', 'ptm.MEDIS')
-                    ->where('ptm.JENIS', 1);
+                    ->whereIn('ptm.JENIS', [1, 2]);
+            })
+            ->leftJoin('master.perawat as pr', function ($j) {
+                $j->on('pr.ID', '=', 'ptm.MEDIS')
+                    ->where('ptm.JENIS', 3);
             })
             ->leftJoin('master.pegawai as p_langsung', function ($j) {
                 $j->on('p_langsung.ID', '=', 'ptm.MEDIS') // Langsung ke ID Pegawai
@@ -893,7 +895,8 @@ class LaporanJasaController extends Controller
             ->leftJoin(DB::raw('master.pegawai as p'), function ($j) {
                 $j->on('p.NIP', '=', DB::raw("
                 CASE
-                    WHEN ptm.JENIS = 1 THEN d.NIP
+                    WHEN ptm.JENIS IN (1, 2) THEN d.NIP
+                        WHEN ptm.JENIS = 3 THEN pr.NIP
                     WHEN ptm.JENIS = 6 THEN p_langsung.NIP
                 END
             "));
@@ -922,7 +925,6 @@ class LaporanJasaController extends Controller
          * 7. RAKIT LAPORAN
          * ========================= */
         $laporan = $tagihanHeadDokter->map(function ($tagihan) use ($pendaftaran, $kunjungan, $tindakan, $petugasTindakan, $jenisPetugas, $petugasFilter) {
-
             $nopen = $pendaftaran
                 ->where('TAGIHAN', $tagihan->simgos_tagihan_id)
                 ->pluck('PENDAFTARAN');
@@ -961,10 +963,23 @@ class LaporanJasaController extends Controller
                         'tanggal' => $tdk->TANGGAL,
                         'tarif' => (int) $tdk->TARIF,
                         'fee_petugas' => $fee,
-                        'petugas' => $petugas->map(function ($p) {
+                        'petugas' => $petugas->map(function ($p) use ($tdk) { // Pastikan ada "use ($tdk)"
+
+                            $feeIndividu = 0;
+                            if ($p->JENIS == 1) {
+                                $feeIndividu = (int) $tdk->DOKTER_OPERATOR;
+                            } elseif ($p->JENIS == 2) {
+                                $feeIndividu = (int) $tdk->DOKTER_ANASTESI;
+                            } elseif ($p->JENIS == 3) {
+                                $feeIndividu = (int) $tdk->PARAMEDIS;
+                            } else {
+                                $feeIndividu = (int) $tdk->TARIF; // Selain itu seperti biasa
+                            }
+
                             return array(
                                 'nama' => $p->NAMA_PETUGAS,
                                 'jenis' => $p->JENIS,
+                                'fee' => $feeIndividu, // Masukkan fee yang sudah didapat
                             );
                         })->values(),
                     );
@@ -989,6 +1004,7 @@ class LaporanJasaController extends Controller
             }
             // ==========================================
 
+            // dd($tagihan->simgos_tagihan_id, $nopen, $kunjunganIds, $detailTindakan->toArray());
             return array(
                 'no_rm' => $tagihan->simgos_norm,
                 'nama_pasien' => $tagihan->nama_pasien,

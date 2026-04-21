@@ -11,14 +11,17 @@
             border: 1px solid #ced4da !important;
             border-radius: .25rem !important;
         }
+
         .select2-container--default .select2-selection--single .select2-selection__rendered {
             line-height: calc(1.5em + .75rem + 2px) !important;
             color: #495057;
             padding-left: 10px;
         }
+
         .select2-container--default .select2-selection--single .select2-selection__arrow {
             height: calc(1.5em + .75rem + 2px) !important;
         }
+
         .select2-container--default .select2-selection--single .select2-selection__placeholder {
             color: #6c757d;
         }
@@ -177,8 +180,11 @@
                                             <div>
                                                 {{ $p['nama'] }}
                                                 <small class="text-muted">
-                                                    ({{ $p['jenis'] == 1 ? 'Dokter' : 'Analis' }})
+                                                    ({{ [1 => 'Dokter', 2 => 'Anastesi', 3 => 'Paramedis'][$p['jenis']] ?? 'Lainnya' }})
+                                                    {{-- 👇 TAMBAHKAN TAMPILAN FEE INDIVIDU DI SINI 👇 --}}
+                                                    - <span class="font-weight-bold">Rp {{ number_format($p['fee'], 0, ',', '.') }}</span>
                                                 </small>
+
                                             </div>
                                         @empty
                                             <em>-</em>
@@ -226,28 +232,28 @@
             </div>
         </div>
 
-@endsection
-        @push('scripts')
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
-    <script>
-        $(document).ready(function () {
-            $('#dokter').select2({
-                placeholder: '-- Semua Dokter --',
-                allowClear: true,
-                width: '100%',
-            });
+    @endsection
+    @push('scripts')
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+        <script>
+            $(document).ready(function() {
+                $('#dokter').select2({
+                    placeholder: '-- Semua Dokter --',
+                    allowClear: true,
+                    width: '100%',
+                });
 
-            // Saat dropdown berubah
-            $('#dokter').on('change', function () {
-                let selected = $(this).find(':selected');
-                $('#jenis_dokter').val(selected.data('jenis') || '');
-            });
+                // Saat dropdown berubah
+                $('#dokter').on('change', function() {
+                    let selected = $(this).find(':selected');
+                    $('#jenis_dokter').val(selected.data('jenis') || '');
+                });
 
-            // Saat halaman pertama kali load
-            let initialJenis = $('#dokter').find(':selected').data('jenis') || '';
-            $('#jenis_dokter').val(initialJenis);
-        });
-    </script>
+                // Saat halaman pertama kali load
+                let initialJenis = $('#dokter').find(':selected').data('jenis') || '';
+                $('#jenis_dokter').val(initialJenis);
+            });
+        </script>
         {{-- <script>
             function setJenisDokter() {
                 let select = document.getElementById('dokter');
@@ -261,8 +267,4 @@
             // saat halaman pertama kali load
             document.addEventListener('DOMContentLoaded', setJenisDokter);
         </script> --}}
-
-
-
-
     @endpush
