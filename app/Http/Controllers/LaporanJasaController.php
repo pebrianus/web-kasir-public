@@ -139,31 +139,20 @@ class LaporanJasaController extends Controller
             ->get(array('NOMOR', 'NOPEN'));
 
         /* =========================
-         * 4. TARIF TERBARU
+         * 4 & 5. TINDAKAN & TARIF HISTORIS (Saat Pasien Ditagih)
          * ========================= */
-        $tarifTerbaru = DB::raw("
-            (
-                SELECT tt1.*
-                FROM master.tarif_tindakan tt1
-                WHERE tt1.ID = (
-                    SELECT MAX(tt2.ID)
-                    FROM master.tarif_tindakan tt2
-                    WHERE tt2.TINDAKAN = tt1.TINDAKAN
-                        AND tt2.STATUS = 1
-                )
-            ) as tt
-        ");
 
-        /* =========================
-         * 5. TINDAKAN
-         * ========================= */
-        $tindakan = TindakanMedis::join(
-            DB::raw('master.tindakan as t'),
-            't.ID',
-            '=',
-            'tindakan_medis.TINDAKAN'
-        )
-            ->leftJoin($tarifTerbaru, 'tt.TINDAKAN', '=', 'tindakan_medis.TINDAKAN')
+        // Block $tarifTerbaru sudah dihapus
+
+        $tindakan = TindakanMedis::join(DB::raw('master.tindakan as t'), 't.ID', '=', 'tindakan_medis.TINDAKAN')
+            // 1. Join ke rincian_tagihan untuk mengunci nota transaksi
+            ->leftJoin('pembayaran.rincian_tagihan as rt', function ($join) {
+                $join->on('rt.REF_ID', '=', 'tindakan_medis.ID')
+                    ->where('rt.JENIS', 3);
+                // Catatan: Pastikan JENIS = 3 di tabel referensi kalian memang merujuk ke Tindakan Medis/Lab.
+            })
+            // 2. Join ke master tarif menggunakan TARIF_ID dari rincian_tagihan
+            ->leftJoin('master.tarif_tindakan as tt', 'tt.ID', '=', 'rt.TARIF_ID')
             ->whereIn('tindakan_medis.KUNJUNGAN', $kunjungan->pluck('NOMOR'))
             ->where('tindakan_medis.STATUS', 1) // Filter tindakan aktif
             ->select(array(
@@ -171,6 +160,8 @@ class LaporanJasaController extends Controller
                 'tindakan_medis.KUNJUNGAN',
                 't.NAMA as NAMA_TINDAKAN',
                 'tindakan_medis.TANGGAL',
+
+                // Nilai ini sekarang adalah harga riwayat (historis)
                 'tt.DOKTER_OPERATOR',
                 'tt.PARAMEDIS',
                 'tt.TARIF',
@@ -490,31 +481,20 @@ class LaporanJasaController extends Controller
             ->get(array('NOMOR', 'NOPEN'));
 
         /* =========================
-         * 4. TARIF TERBARU
+         * 4 & 5. TINDAKAN & TARIF HISTORIS (Saat Pasien Ditagih)
          * ========================= */
-        $tarifTerbaru = DB::raw("
-            (
-                SELECT tt1.*
-                FROM master.tarif_tindakan tt1
-                WHERE tt1.ID = (
-                    SELECT MAX(tt2.ID)
-                    FROM master.tarif_tindakan tt2
-                    WHERE tt2.TINDAKAN = tt1.TINDAKAN
-                        AND tt2.STATUS = 1
-                )
-            ) as tt
-        ");
 
-        /* =========================
-         * 5. TINDAKAN
-         * ========================= */
-        $tindakan = TindakanMedis::join(
-            DB::raw('master.tindakan as t'),
-            't.ID',
-            '=',
-            'tindakan_medis.TINDAKAN'
-        )
-            ->leftJoin($tarifTerbaru, 'tt.TINDAKAN', '=', 'tindakan_medis.TINDAKAN')
+        // Block $tarifTerbaru sudah dihapus
+
+        $tindakan = TindakanMedis::join(DB::raw('master.tindakan as t'), 't.ID', '=', 'tindakan_medis.TINDAKAN')
+            // 1. Join ke rincian_tagihan untuk mengunci nota transaksi
+            ->leftJoin('pembayaran.rincian_tagihan as rt', function ($join) {
+                $join->on('rt.REF_ID', '=', 'tindakan_medis.ID')
+                    ->where('rt.JENIS', 3);
+                // Catatan: Pastikan JENIS = 3 di tabel referensi kalian memang merujuk ke Tindakan Medis/Lab.
+            })
+            // 2. Join ke master tarif menggunakan TARIF_ID dari rincian_tagihan
+            ->leftJoin('master.tarif_tindakan as tt', 'tt.ID', '=', 'rt.TARIF_ID')
             ->whereIn('tindakan_medis.KUNJUNGAN', $kunjungan->pluck('NOMOR'))
             ->where('tindakan_medis.STATUS', 1) // Filter tindakan aktif
             ->select(array(
@@ -522,6 +502,8 @@ class LaporanJasaController extends Controller
                 'tindakan_medis.KUNJUNGAN',
                 't.NAMA as NAMA_TINDAKAN',
                 'tindakan_medis.TANGGAL',
+
+                // Nilai ini sekarang adalah harga riwayat (historis)
                 'tt.DOKTER_OPERATOR',
                 'tt.PARAMEDIS',
                 'tt.TARIF',
@@ -849,7 +831,7 @@ class LaporanJasaController extends Controller
             // (Asumsi rt.JENIS = 3 merujuk ke tindakan medis, sesuai dengan Stored Procedure-mu)
             ->leftJoin('pembayaran.rincian_tagihan as rt', function ($join) {
                 $join->on('rt.REF_ID', '=', 'tindakan_medis.ID')
-                     ->where('rt.JENIS', 3);
+                    ->where('rt.JENIS', 3);
             })
             // 2. Sambungkan ke tabel master tarif berbekal TARIF_ID dari rincian_tagihan
             // Ini otomatis menarik harga riwayat saat transaksi terjadi
