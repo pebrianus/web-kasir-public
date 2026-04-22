@@ -251,10 +251,23 @@ class LaporanJasaController extends Controller
                         'tanggal' => $tdk->TANGGAL,
                         'tarif' => (int) $tdk->TARIF,
                         'fee_petugas' => $fee,
-                        'petugas' => $petugas->map(function ($p) {
+                        // 👇 INI BAGIAN YANG DIUPDATE 👇
+                        'petugas' => $petugas->map(function ($p) use ($tdk) { // Pastikan ada "use ($tdk)"
+
+                            $feeIndividu = 0;
+                            // Menyesuaikan dengan query petugas di Radiologi (Jenis 1 = Dokter, Jenis 3 = Paramedis)
+                            if ($p->JENIS == 1) {
+                                $feeIndividu = (int) $tdk->DOKTER_OPERATOR;
+                            } elseif ($p->JENIS == 3) {
+                                $feeIndividu = (int) $tdk->PARAMEDIS;
+                            } else {
+                                $feeIndividu = (int) $tdk->TARIF;
+                            }
+
                             return array(
                                 'nama' => $p->NAMA_PETUGAS,
                                 'jenis' => $p->JENIS,
+                                'fee' => $feeIndividu, // Masukkan fee individu
                             );
                         })->values(),
                     );
@@ -267,16 +280,30 @@ class LaporanJasaController extends Controller
                 return null;
             }
 
+            // ==========================================
+            // KODE TAMBAHAN UNTUK CEK TOTAL 0
+            // ==========================================
+            $totalTarif = $detailTindakan->sum('tarif');
+            $totalFee = $detailTindakan->sum('fee_petugas');
+
+            // ⛔ skip pasien jika total tarif dan fee sama-sama 0
+            if ($totalTarif == 0 && $totalFee == 0) {
+                return null;
+            }
+            // ==========================================
+
             return array(
                 'no_rm' => $tagihan->simgos_norm,
                 'nama_pasien' => $tagihan->nama_pasien,
                 'tanggal_tagihan' => $tagihan->simgos_tanggal_tagihan,
                 'nama_asuransi' => $tagihan->nama_asuransi,
                 'tindakan' => $detailTindakan,
-                'total_tarif' => $detailTindakan->sum('tarif'),
-                'total_fee' => $detailTindakan->sum('fee_petugas'),
+                'total_tarif' => $totalTarif,
+                'total_fee' => $totalFee,
             );
         });
+
+        // dd($laporan->toArray());
 
         return $laporan->filter()->values();
     }

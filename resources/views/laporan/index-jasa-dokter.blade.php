@@ -181,8 +181,10 @@
                                                 {{ $p['nama'] }}
                                                 <small class="text-muted">
                                                     ({{ [1 => 'Dokter', 2 => 'Anastesi', 3 => 'Paramedis'][$p['jenis']] ?? 'Lainnya' }})
-                                                    {{-- 👇 TAMBAHKAN TAMPILAN FEE INDIVIDU DI SINI 👇 --}}
-                                                    - <span class="font-weight-bold">Rp {{ number_format($p['fee'], 0, ',', '.') }}</span>
+                                                    {{-- 👇 TAMPILAN FEE INDIVIDU DENGAN KONDISI 👇 --}}
+                                                    @if($p['fee'] > 0)
+                                                        - <span class="font-weight-bold">Rp {{ number_format($p['fee'], 0, ',', '.') }}</span>
+                                                    @endif
                                                 </small>
 
                                             </div>
