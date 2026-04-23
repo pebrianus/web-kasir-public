@@ -95,7 +95,8 @@
                             <div class="d-flex align-items-center">
                                 <i class="fas fa-exclamation-triangle mr-2"></i>
                                 <div>
-                                    <strong>Note: </strong> Rincian tagihan telah dimodifikasi secara manual. Silakan tekan tombol <strong>Refresh Tagihan</strong> untuk mengambil ulang data dari SIMGOS.
+                                    <strong>Note: </strong> Rincian tagihan telah dimodifikasi secara manual. Silakan tekan
+                                    tombol <strong>Refresh Tagihan</strong> untuk mengambil ulang data dari SIMGOS.
                                 </div>
                             </div>
                         </div>
@@ -221,21 +222,26 @@
                     <div>
                         {{-- Tombol Refresh (Hanya jika masih draft) --}}
                         @if ($head->status_kasir == 'draft')
-                            <form action="{{ route('kasir.tagihan.refresh', ['id' => $head->id]) }}" method="POST"
-                                class="d-inline"
-                                onsubmit="return confirm('Anda yakin ingin me-refresh data dari SIMGOS? Pembagian tagihan akan direset.');">
-                                @csrf
-                                <input type="hidden" name="jenis_kasir" value="{{ $jenis_kasir }}">
+                            @if (auth()->user()->role_id != 3)
 
-                                <button type="submit" class="btn btn-info btn-sm" title="Refresh Data SIMGOS">
-                                    <i class="fas fa-sync"></i>
-                                </button>
-                            </form>
+                                <form action="{{ route('kasir.tagihan.refresh', ['id' => $head->id]) }}" method="POST"
+                                    class="d-inline"
+                                    onsubmit="return confirm('Anda yakin ingin me-refresh data dari SIMGOS? Pembagian tagihan akan direset.');">
+                                    @csrf
+                                    <input type="hidden" name="jenis_kasir" value="{{ $jenis_kasir }}">
 
-                            {{-- <a href="{{ route('kasir.tagihan.rincian.edit', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
-                                class="btn btn-warning btn-sm" title="Edit Rincian Tagihan">
-                                <i class="fas fa-edit"></i>
-                            </a> --}}
+                                    <button type="submit" class="btn btn-info btn-sm" title="Refresh Data SIMGOS">
+                                        <i class="fas fa-sync"></i>
+                                    </button>
+                                </form>
+
+                                {{-- <a
+                                    href="{{ route('kasir.tagihan.rincian.edit', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
+                                    class="btn btn-warning btn-sm" title="Edit Rincian Tagihan">
+                                    <i class="fas fa-edit"></i>
+                                </a> --}}
+                            @endif
+
                         @endif
                         <a href="{{ route('kasir.pasien.tagihan', ['norm' => $head->simgos_norm, 'jenis_kasir' => $jenis_kasir]) }}"
                             class="btn btn-danger btn-sm" title="Kembali">
@@ -249,19 +255,23 @@
                     {{-- FIX ERROR NANTI --}}
                     @if ($head->status_kasir == 'draft')
                         {{-- JIKA MASIH DRAFT: Tampilkan tombol proses --}}
+                        @if (auth()->user()->role_id != 3)
 
-                        <a href="{{ route('kasir.tagihan.bagi', ['id' => $head->id, 'jenis_kasir' => request('jenis_kasir')]) }}"
-                            class="btn btn-primary btn-icon-split btn-block mb-2">
-                            <span class="icon text-white-50"><i class="fas fa-divide"></i></span>
-                            <span class="text">Bagi Tagihan</span>
-                        </a>
 
-                        {{-- Tombol untuk memicu Modal Pembayaran --}}
-                        <button type="button" class="btn btn-warning btn-icon-split btn-block" data-toggle="modal"
-                            data-target="#modalPembayaran">
-                            <span class="icon text-white-50"><i class="fas fa-dollar-sign"></i></span>
-                            <span class="text">Proses Pembayaran</span>
-                        </button>
+                            <a href="{{ route('kasir.tagihan.bagi', ['id' => $head->id, 'jenis_kasir' => request('jenis_kasir')]) }}"
+                                class="btn btn-primary btn-icon-split btn-block mb-2">
+                                <span class="icon text-white-50"><i class="fas fa-divide"></i></span>
+                                <span class="text">Bagi Tagihan</span>
+                            </a>
+
+                            {{-- Tombol untuk memicu Modal Pembayaran --}}
+                            <button type="button" class="btn btn-warning btn-icon-split btn-block" data-toggle="modal"
+                                data-target="#modalPembayaran">
+                                <span class="icon text-white-50"><i class="fas fa-dollar-sign"></i></span>
+                                <span class="text">Proses Pembayaran</span>
+                            </button>
+                        @endif
+
                     @elseif (in_array($head->status_kasir, ['lunas', 'piutang', 'outstanding']))
                         {{-- ALERT berbeda tergantung status --}}
                         @if ($head->status_kasir == 'piutang' || $head->status_kasir == 'outstanding')
@@ -318,15 +328,20 @@
                         </a>
 
                         <hr class="my-4">
-                        <form action="{{ route('kasir.bayar.batal', ['id' => $head->id]) }}" method="POST"
-                            onsubmit="return confirm('Pembayaran akan dihapus dari laporan harian dan status tagihan kembali menjadi DRAFT.\n\nApakah Anda yakin ingin membatalkan pembayaran ini?');">
-                            @csrf
-                            <input type="hidden" name="jenis_kasir" value="{{ $jenis_kasir }}">
+                        @if (auth()->user()->role_id != 3)
 
-                            <button type="submit" class="btn btn-outline-danger btn-block">
-                                <i class="fas fa-undo-alt mr-1"></i> Batalkan Pembayaran
-                            </button>
-                        </form>
+
+                            <form action="{{ route('kasir.bayar.batal', ['id' => $head->id]) }}" method="POST"
+                                onsubmit="return confirm('Pembayaran akan dihapus dari laporan harian dan status tagihan kembali menjadi DRAFT.\n\nApakah Anda yakin ingin membatalkan pembayaran ini?');">
+                                @csrf
+                                <input type="hidden" name="jenis_kasir" value="{{ $jenis_kasir }}">
+
+                                <button type="submit" class="btn btn-outline-danger btn-block">
+                                    <i class="fas fa-undo-alt mr-1"></i> Batalkan Pembayaran
+                                </button>
+                            </form>
+                        @endif
+
                     @endif
                     {{-- AKHIR LOGIKA IF/ELSE --}}
 

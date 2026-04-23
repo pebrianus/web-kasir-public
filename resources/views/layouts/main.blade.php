@@ -39,6 +39,7 @@
         #accordionSidebar .collapse {
             z-index: 1050 !important;
         }
+
         #content-wrapper {
             min-height: 100vh;
         }
@@ -120,10 +121,18 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
                             </a>
                         @endif
 
+                        @if (auth()->user()->role_id == 3)
+                            <a class="collapse-item" href="{{ route('pencarian.rawat-jalan', ['jenis' => 4]) }}">
+                                Kasir Lab
+                            </a>
+                        @endif
+
                     </div>
 
                 </div>
             </li>
+
+            @if (auth()->user()->role_id != 3)
 
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTagihan"
@@ -146,6 +155,8 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
                     </div>
                 </div>
             </li>
+
+
 
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLaporan"
@@ -180,6 +191,7 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
                     </div>
                 </div>
             </li>
+            @endif
 
             {{-- Hapus menu lain yang tidak perlu, sisakan ini --}}
 
@@ -203,6 +215,8 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
 
                     <ul class="navbar-nav ml-auto">
 
+                        @if (auth()->user()->role_id != 3)
+
                         <li class="nav-item dropdown no-arrow mx-1">
                             @if ($sesiKasirAktif)
                                 {{-- JIKA KASIR SEDANG BUKA --}}
@@ -219,9 +233,9 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
 
                                     {{-- Form untuk "Tutup Kasir" --}}
                                     <a class="dropdown-item" href="{{ route('kasir.sesi.tutup') }}" onclick="event.preventDefault();
-                                                                    if(confirm('Anda yakin ingin menutup sesi kasir saat ini?')) {
-                                                                        document.getElementById('tutup-kasir-form').submit();
-                                                                    }">
+                                                                        if(confirm('Anda yakin ingin menutup sesi kasir saat ini?')) {
+                                                                            document.getElementById('tutup-kasir-form').submit();
+                                                                        }">
                                         <i class="fas fa-door-closed fa-sm fa-fw mr-2 text-gray-400"></i>
                                         Tutup Kasir
                                     </a>
@@ -240,6 +254,7 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
                             @endif
 
                         </li>
+                        @endif
 
                         <div class="topbar-divider d-none d-sm-block"></div>
 
