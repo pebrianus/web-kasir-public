@@ -90,7 +90,7 @@
                     <h6 class="m-0 font-weight-bold text-primary">Rincian Tagihan</h6>
                 </div>
                 <div class="card-body">
-                    @if(!$isDataValid)
+                    @if (!$isDataValid)
                         <div class="alert alert-warning shadow-sm border-left-warning">
                             <div class="d-flex align-items-center">
                                 <i class="fas fa-exclamation-triangle mr-2"></i>
@@ -120,35 +120,35 @@
                                     $total_pasien = 0;
                                 @endphp
                                 @forelse ($detail as $item)
-                                                        <tr>
-                                                            <td>{{ $item->deskripsi_item }}</td>
-                                                            <td class="text-right">{{ $item->qty }}</td>
-                                                            <td class="text-right">
-                                                                {{ fmod($item->harga_satuan, 1) !== 0.0
-                                    ? number_format($item->harga_satuan, 2, ',', '.')
-                                    : number_format($item->harga_satuan, 0, ',', '.') }}
-                                                            </td>
-                                                            <td class="text-right">
-                                                                {{ fmod($item->subtotal, 1) !== 0.0
-                                    ? number_format($item->subtotal, 2, ',', '.')
-                                    : number_format($item->subtotal, 0, ',', '.') }}
-                                                            </td>
-                                                            <td class="text-right bg-light">
-                                                                {{ fmod($item->nominal_ditanggung_asuransi, 1) !== 0.0
-                                    ? number_format($item->nominal_ditanggung_asuransi, 2, ',', '.')
-                                    : number_format($item->nominal_ditanggung_asuransi, 0, ',', '.') }}
-                                                            </td>
-                                                            <td class="text-right bg-light">
-                                                                {{ fmod($item->nominal_ditanggung_pasien, 1) !== 0.0
-                                    ? number_format($item->nominal_ditanggung_pasien, 2, ',', '.')
-                                    : number_format($item->nominal_ditanggung_pasien, 0, ',', '.') }}
-                                                            </td>
-                                                        </tr>
-                                                        @php
-                                                            $total_asli += $item->subtotal;
-                                                            $total_asuransi += $item->nominal_ditanggung_asuransi;
-                                                            $total_pasien += $item->nominal_ditanggung_pasien;
-                                                        @endphp
+                                    <tr>
+                                        <td>{{ $item->deskripsi_item }}</td>
+                                        <td class="text-right">{{ $item->qty }}</td>
+                                        <td class="text-right">
+                                            {{ fmod($item->harga_satuan, 1) !== 0.0
+                                                ? number_format($item->harga_satuan, 2, ',', '.')
+                                                : number_format($item->harga_satuan, 0, ',', '.') }}
+                                        </td>
+                                        <td class="text-right">
+                                            {{ fmod($item->subtotal, 1) !== 0.0
+                                                ? number_format($item->subtotal, 2, ',', '.')
+                                                : number_format($item->subtotal, 0, ',', '.') }}
+                                        </td>
+                                        <td class="text-right bg-light">
+                                            {{ fmod($item->nominal_ditanggung_asuransi, 1) !== 0.0
+                                                ? number_format($item->nominal_ditanggung_asuransi, 2, ',', '.')
+                                                : number_format($item->nominal_ditanggung_asuransi, 0, ',', '.') }}
+                                        </td>
+                                        <td class="text-right bg-light">
+                                            {{ fmod($item->nominal_ditanggung_pasien, 1) !== 0.0
+                                                ? number_format($item->nominal_ditanggung_pasien, 2, ',', '.')
+                                                : number_format($item->nominal_ditanggung_pasien, 0, ',', '.') }}
+                                        </td>
+                                    </tr>
+                                    @php
+                                        $total_asli += $item->subtotal;
+                                        $total_asuransi += $item->nominal_ditanggung_asuransi;
+                                        $total_pasien += $item->nominal_ditanggung_pasien;
+                                    @endphp
                                 @empty
                                     <tr>
                                         <td colspan="5" class="text-center">Data rincian tidak ditemukan.</td>
@@ -162,8 +162,8 @@
                                     <td colspan="3" class="text-right font-weight-bold">
                                         Rp.
                                         {{ fmod($total_asli, 1) !== 0.0
-        ? number_format($total_asli, 2, ',', '.')
-        : number_format($total_asli, 0, ',', '.') }}
+                                            ? number_format($total_asli, 2, ',', '.')
+                                            : number_format($total_asli, 0, ',', '.') }}
                                     </td>
                                 </tr>
                                 {{-- +++ TAMBAHKAN INI UNTUK DISKON +++ --}}
@@ -190,8 +190,8 @@
                                     <td class="text-right font-weight-bold" colspan="3">
                                         Rp.
                                         {{ fmod($total_asuransi, 1) !== 0.0
-        ? number_format($total_asuransi, 2, ',', '.')
-        : number_format($total_asuransi, 0, ',', '.') }}
+                                            ? number_format($total_asuransi, 2, ',', '.')
+                                            : number_format($total_asuransi, 0, ',', '.') }}
                                     </td>
                                 </tr>
                                 <tr class="table-success">
@@ -203,8 +203,8 @@
                                             $total_pasien_bersih = max(0, $total_pasien - $head->diskon_simgos);
                                         @endphp
                                         {{ fmod($total_pasien_bersih, 1) !== 0.0
-        ? number_format($total_pasien_bersih, 2, ',', '.')
-        : number_format($total_pasien_bersih, 0, ',', '.') }}
+                                            ? number_format($total_pasien_bersih, 2, ',', '.')
+                                            : number_format($total_pasien_bersih, 0, ',', '.') }}
                                     </td>
                                 </tr>
                             </tfoot>
@@ -223,7 +223,6 @@
                         {{-- Tombol Refresh (Hanya jika masih draft) --}}
                         @if ($head->status_kasir == 'draft')
                             @if (auth()->user()->role_id != 3)
-
                                 <form action="{{ route('kasir.tagihan.refresh', ['id' => $head->id]) }}" method="POST"
                                     class="d-inline"
                                     onsubmit="return confirm('Anda yakin ingin me-refresh data dari SIMGOS? Pembagian tagihan akan direset.');">
@@ -255,9 +254,12 @@
                     {{-- FIX ERROR NANTI --}}
                     @if ($head->status_kasir == 'draft')
                         {{-- JIKA MASIH DRAFT: Tampilkan tombol proses --}}
-                        @if (auth()->user()->role_id != 3)
-
-
+                        @if (auth()->user()->role_id == 3)
+                            {{-- KHUSUS ROLE 3: Tampilkan pesan Belum Lunas karena status masih draft --}}
+                            <div class="alert alert-danger text-center">
+                                <strong><i class="fas fa-exclamation-circle"></i> BELUM LUNAS</strong>
+                            </div>
+                        @else
                             <a href="{{ route('kasir.tagihan.bagi', ['id' => $head->id, 'jenis_kasir' => request('jenis_kasir')]) }}"
                                 class="btn btn-primary btn-icon-split btn-block mb-2">
                                 <span class="icon text-white-50"><i class="fas fa-divide"></i></span>
@@ -271,7 +273,6 @@
                                 <span class="text">Proses Pembayaran</span>
                             </button>
                         @endif
-
                     @elseif (in_array($head->status_kasir, ['lunas', 'piutang', 'outstanding']))
                         {{-- ALERT berbeda tergantung status --}}
                         @if ($head->status_kasir == 'piutang' || $head->status_kasir == 'outstanding')
@@ -329,8 +330,6 @@
 
                         <hr class="my-4">
                         @if (auth()->user()->role_id != 3)
-
-
                             <form action="{{ route('kasir.bayar.batal', ['id' => $head->id]) }}" method="POST"
                                 onsubmit="return confirm('Pembayaran akan dihapus dari laporan harian dan status tagihan kembali menjadi DRAFT.\n\nApakah Anda yakin ingin membatalkan pembayaran ini?');">
                                 @csrf
@@ -446,7 +445,8 @@
                                         <tr class="row-piutang" style="cursor:pointer">
                                             <td>
                                                 <input type="checkbox" class="chk-piutang" name="piutang_item_ids[]"
-                                                    value="{{ $item->id }}" data-nominal="{{ $item->nominal_ditanggung_asuransi }}"
+                                                    value="{{ $item->id }}"
+                                                    data-nominal="{{ $item->nominal_ditanggung_asuransi }}"
                                                     form="formPembayaran">
                                             </td>
                                             <td>{{ $item->deskripsi_item }}</td>
@@ -475,12 +475,12 @@
                         <i class="fas fa-arrow-left mr-1"></i> Kembali
                     </button>
                     <div class="d-flex align-items-center">
-                        <button type="button" class="btn btn-info" id="btnCheckAll" @if($itemAsuransi->isEmpty()) disabled
-                        @endif>
+                        <button type="button" class="btn btn-info" id="btnCheckAll"
+                            @if ($itemAsuransi->isEmpty()) disabled @endif>
                             <i class="fas fa-check-double mr-1"></i> Pilih Semua
                         </button>
                         <button type="button" class="btn btn-success ml-2" id="btnKonfirmasiPiutang"
-                            @if($itemAsuransi->isEmpty()) disabled @endif>
+                            @if ($itemAsuransi->isEmpty()) disabled @endif>
                             <i class="fas fa-check mr-1"></i> Konfirmasi & Proses Piutang
                         </button>
                     </div>
@@ -494,14 +494,14 @@
     {{-- ============================================== --}}
     @push('scripts')
         <script>
-            $(document).ready(function () {
+            $(document).ready(function() {
 
                 const METODE_PIUTANG_ID = 4;
 
                 // -----------------------------------------------
                 // Tombol Konfirmasi di Modal Pembayaran
                 // -----------------------------------------------
-                $('#btnKonfirmasiPembayaran').on('click', function () {
+                $('#btnKonfirmasiPembayaran').on('click', function() {
                     const metodeTerpilih = parseInt($('#metode_bayar_id').val());
 
                     if (!metodeTerpilih) {
@@ -512,7 +512,7 @@
                     if (metodeTerpilih === METODE_PIUTANG_ID) {
                         // Tutup modal pembayaran, buka modal piutang
                         $('#modalPembayaran').modal('hide');
-                        $('#modalPembayaran').on('hidden.bs.modal', function () {
+                        $('#modalPembayaran').on('hidden.bs.modal', function() {
                             $('#modalPiutang').modal('show');
                             $(this).off('hidden.bs.modal'); // unbind agar tidak loop
                         });
@@ -525,18 +525,18 @@
                 // -----------------------------------------------
                 // Tombol Kembali dari Modal Piutang
                 // -----------------------------------------------
-                $('#btnKembaliKePembayaran').on('click', function () {
+                $('#btnKembaliKePembayaran').on('click', function() {
                     $('#modalPiutang').modal('hide');
-                    $('#modalPiutang').on('hidden.bs.modal', function () {
+                    $('#modalPiutang').on('hidden.bs.modal', function() {
                         $('#modalPembayaran').modal('show');
                         $(this).off('hidden.bs.modal');
                     });
                 });
 
                 // Tombol X di Modal Piutang = kembali ke Modal Pembayaran
-                $('#btnTutupModalPiutang').on('click', function () {
+                $('#btnTutupModalPiutang').on('click', function() {
                     $('#modalPiutang').modal('hide');
-                    $('#modalPiutang').on('hidden.bs.modal', function () {
+                    $('#modalPiutang').on('hidden.bs.modal', function() {
                         $('#modalPembayaran').modal('show');
                         $(this).off('hidden.bs.modal');
                     });
@@ -545,7 +545,7 @@
                 // -----------------------------------------------
                 // Checkbox: Pilih Semua
                 // -----------------------------------------------
-                $('#checkAll').on('change', function () {
+                $('#checkAll').on('change', function() {
                     $('.chk-piutang').prop('checked', this.checked);
                     hitungTotalPiutang();
                 });
@@ -553,7 +553,7 @@
                 // -----------------------------------------------
                 // Checkbox: Per Item — klik baris juga bisa
                 // -----------------------------------------------
-                $(document).on('click', '.row-piutang', function (e) {
+                $(document).on('click', '.row-piutang', function(e) {
                     if (!$(e.target).is('input[type=checkbox]')) {
                         const chk = $(this).find('.chk-piutang');
                         chk.prop('checked', !chk.prop('checked'));
@@ -561,7 +561,7 @@
                     hitungTotalPiutang();
                 });
 
-                $('.chk-piutang').on('change', function () {
+                $('.chk-piutang').on('change', function() {
                     hitungTotalPiutang();
                 });
 
@@ -570,12 +570,14 @@
                 // -----------------------------------------------
                 function hitungTotalPiutang() {
                     let total = 0;
-                    $('.chk-piutang:checked').each(function () {
+                    $('.chk-piutang:checked').each(function() {
                         total += parseFloat($(this).data('nominal')) || 0;
                     });
 
                     // Format angka Indonesia
-                    const formatted = 'Rp ' + total.toLocaleString('id-ID', { minimumFractionDigits: 0 });
+                    const formatted = 'Rp ' + total.toLocaleString('id-ID', {
+                        minimumFractionDigits: 0
+                    });
                     $('#totalPiutangDipilih').text(formatted);
                     $('#inputTotalPiutang').val(total);
 
@@ -586,7 +588,7 @@
                 // -----------------------------------------------
                 // Konfirmasi Piutang → Submit Form
                 // -----------------------------------------------
-                $('#btnKonfirmasiPiutang').on('click', function () {
+                $('#btnKonfirmasiPiutang').on('click', function() {
                     const totalDipilih = parseFloat($('#inputTotalPiutang').val()) || 0;
                     if (totalDipilih === 0) {
                         alert('Pilih minimal satu item piutang asuransi.');
@@ -594,19 +596,19 @@
                     }
 
                     if (confirm('Konfirmasi proses piutang asuransi sebesar Rp ' +
-                        totalDipilih.toLocaleString('id-ID') + '?')) {
+                            totalDipilih.toLocaleString('id-ID') + '?')) {
                         $('#formPembayaran').submit();
                     }
                 });
 
             });
 
-            $('#btnCheckAll').on('click', function () {
+            $('#btnCheckAll').on('click', function() {
                 const allChecked = $('.chk-piutang:not(:checked)').length === 0;
                 $('.chk-piutang').prop('checked', !allChecked).trigger('change');
-                $(this).html(allChecked
-                    ? '<i class="fas fa-check-double mr-1"></i> Pilih Semua'
-                    : '<i class="fas fa-times-circle mr-1"></i> Batal Semua'
+                $(this).html(allChecked ?
+                    '<i class="fas fa-check-double mr-1"></i> Pilih Semua' :
+                    '<i class="fas fa-times-circle mr-1"></i> Batal Semua'
                 );
             });
         </script>
