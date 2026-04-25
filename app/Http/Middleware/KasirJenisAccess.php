@@ -11,7 +11,7 @@ class KasirJenisAccess
     protected array $mapJenisKasir = [
         1 => [1],
         2 => [2, 3, 4, 5, 6],
-        3 => [4],
+        3 => [1,2,3,4],
     ];
 
     public function handle(Request $request, Closure $next)

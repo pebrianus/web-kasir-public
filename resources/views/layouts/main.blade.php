@@ -95,7 +95,8 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
                         <h6 class="collapse-header">Pembayaran:</h6>
 
                         {{-- Role 1: hanya Rawat Jalan --}}
-                        @if (auth()->user()->role_id == 1)
+                        @if (auth()->user()->role_id == 1 || auth()->user()->role_id == 3)
+                            {{-- Role 4: Super Admin, bisa akses semua jenis kasir --}}
                             <a class="collapse-item" href="{{ route('pencarian.rawat-jalan', ['jenis' => 1]) }}">
                                 Kasir Rawat Jalan
                             </a>
@@ -125,6 +126,13 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
                             <a class="collapse-item" href="{{ route('pencarian.rawat-jalan', ['jenis' => 4]) }}">
                                 Kasir Lab
                             </a>
+                            <a class="collapse-item" href="{{ route('pencarian.rawat-jalan', ['jenis' => 3]) }}">
+                                Kasir Rawat Inap
+                            </a>
+
+                            <a class="collapse-item" href="{{ route('pencarian.rawat-jalan', ['jenis' => 2]) }}">
+                                Kasir IGD
+                            </a>
                         @endif
 
                     </div>
@@ -133,64 +141,63 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
             </li>
 
             @if (auth()->user()->role_id != 3)
+                <li class="nav-item">
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTagihan"
+                        aria-expanded="true" aria-controls="collapseTagihan">
+                        <i class="fas fa-fw fa-file-invoice-dollar"></i>
+                        <span>Tagihan</span>
+                    </a>
+                    <div id="collapseTagihan" class="collapse" aria-labelledby="headingUtilities"
+                        data-parent="#accordionSidebar">
+                        <div class="bg-white py-3 collapse-inner rounded">
 
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTagihan"
-                    aria-expanded="true" aria-controls="collapseTagihan">
-                    <i class="fas fa-fw fa-file-invoice-dollar"></i>
-                    <span>Tagihan</span>
-                </a>
-                <div id="collapseTagihan" class="collapse" aria-labelledby="headingUtilities"
-                    data-parent="#accordionSidebar">
-                    <div class="bg-white py-3 collapse-inner rounded">
-
-                        <div class="">
-                            <h6 class="collapse-header">Kelola Tagihan</h6>
-                            <a class="collapse-item" href="{{ route('piutang.index') }}">
-                                Piutang
-                            </a>
-                        </div>
-
-
-                    </div>
-                </div>
-            </li>
+                            <div class="">
+                                <h6 class="collapse-header">Kelola Tagihan</h6>
+                                <a class="collapse-item" href="{{ route('piutang.index') }}">
+                                    Piutang
+                                </a>
+                            </div>
 
 
-
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLaporan"
-                    aria-expanded="true" aria-controls="collapseLaporan">
-                    <i class="fas fa-fw fa-chart-bar"></i>
-                    <span>Laporan</span>
-                </a>
-                <div id="collapseLaporan" class="collapse" aria-labelledby="headingUtilities"
-                    data-parent="#accordionSidebar">
-                    <div class="bg-white py-3 collapse-inner rounded">
-
-                        <div class="mb-3">
-                            <h6 class="collapse-header">Laporan Kasir</h6>
-                            <a class="collapse-item"
-                                href="{{ route('laporan.penerimaan.index', ['jenis' => auth()->user()->role_id]) }}">
-                                Laporan Penerimaan
-                            </a>
-                        </div>
-
-                        <div>
-                            <h6 class="collapse-header">Laporan Jasa</h6>
-                            <a class="collapse-item" href="{{ route('laporan.jasa.index') }}">
-                                Laporan Jasa Radiologi
-                            </a>
-                            <a class="collapse-item" href="{{ route('laporan.jasa.lab.index') }}">
-                                Laporan Jasa Laboratorium
-                            </a>
-                            <a class="collapse-item" href="{{ route('laporan.jasa.dokter.index') }}">
-                                Laporan Jasa Dokter
-                            </a>
                         </div>
                     </div>
-                </div>
-            </li>
+                </li>
+
+
+
+                <li class="nav-item">
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseLaporan"
+                        aria-expanded="true" aria-controls="collapseLaporan">
+                        <i class="fas fa-fw fa-chart-bar"></i>
+                        <span>Laporan</span>
+                    </a>
+                    <div id="collapseLaporan" class="collapse" aria-labelledby="headingUtilities"
+                        data-parent="#accordionSidebar">
+                        <div class="bg-white py-3 collapse-inner rounded">
+
+                            <div class="mb-3">
+                                <h6 class="collapse-header">Laporan Kasir</h6>
+                                <a class="collapse-item"
+                                    href="{{ route('laporan.penerimaan.index', ['jenis' => auth()->user()->role_id]) }}">
+                                    Laporan Penerimaan
+                                </a>
+                            </div>
+
+                            <div>
+                                <h6 class="collapse-header">Laporan Jasa</h6>
+                                <a class="collapse-item" href="{{ route('laporan.jasa.index') }}">
+                                    Laporan Jasa Radiologi
+                                </a>
+                                <a class="collapse-item" href="{{ route('laporan.jasa.lab.index') }}">
+                                    Laporan Jasa Laboratorium
+                                </a>
+                                <a class="collapse-item" href="{{ route('laporan.jasa.dokter.index') }}">
+                                    Laporan Jasa Dokter
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </li>
             @endif
 
             {{-- Hapus menu lain yang tidak perlu, sisakan ini --}}
@@ -217,43 +224,44 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
 
                         @if (auth()->user()->role_id != 3)
 
-                        <li class="nav-item dropdown no-arrow mx-1">
-                            @if ($sesiKasirAktif)
-                                {{-- JIKA KASIR SEDANG BUKA --}}
-                                <a class="nav-link dropdown-toggle" href="#" id="sesiDropdown" role="button"
-                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
-                                    title="Kasir Sedang BUKA. Klik untuk Tutup Kasir.">
-                                    <i class="fas fa-cash-register fa-fw text-success"></i> </a>
-                                <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
-                                    aria-labelledby="sesiDropdown">
-                                    <span class="dropdown-item disabled">
-                                        Sesi BUKA (sejak {{ $sesiKasirAktif->waktu_buka->format('H:i') }})
-                                    </span>
-                                    <div class="dropdown-divider"></div>
+                            <li class="nav-item dropdown no-arrow mx-1">
+                                @if ($sesiKasirAktif)
+                                    {{-- JIKA KASIR SEDANG BUKA --}}
+                                    <a class="nav-link dropdown-toggle" href="#" id="sesiDropdown"
+                                        role="button" data-toggle="dropdown" aria-haspopup="true"
+                                        aria-expanded="false" title="Kasir Sedang BUKA. Klik untuk Tutup Kasir.">
+                                        <i class="fas fa-cash-register fa-fw text-success"></i> </a>
+                                    <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
+                                        aria-labelledby="sesiDropdown">
+                                        <span class="dropdown-item disabled">
+                                            Sesi BUKA (sejak {{ $sesiKasirAktif->waktu_buka->format('H:i') }})
+                                        </span>
+                                        <div class="dropdown-divider"></div>
 
-                                    {{-- Form untuk "Tutup Kasir" --}}
-                                    <a class="dropdown-item" href="{{ route('kasir.sesi.tutup') }}" onclick="event.preventDefault();
+                                        {{-- Form untuk "Tutup Kasir" --}}
+                                        <a class="dropdown-item" href="{{ route('kasir.sesi.tutup') }}"
+                                            onclick="event.preventDefault();
                                                                         if(confirm('Anda yakin ingin menutup sesi kasir saat ini?')) {
                                                                             document.getElementById('tutup-kasir-form').submit();
                                                                         }">
-                                        <i class="fas fa-door-closed fa-sm fa-fw mr-2 text-gray-400"></i>
-                                        Tutup Kasir
-                                    </a>
+                                            <i class="fas fa-door-closed fa-sm fa-fw mr-2 text-gray-400"></i>
+                                            Tutup Kasir
+                                        </a>
 
-                                    <form id="tutup-kasir-form" action="{{ route('kasir.sesi.tutup') }}" method="POST"
-                                        class="d-none">
-                                        @csrf
-                                    </form>
-                                </div>
-                            @else
-                                {{-- JIKA KASIR SEDANG TUTUP --}}
-                                <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="modal"
-                                    data-target="#modalBukaKasir" {{-- Memicu Modal --}}
-                                    title="Kasir DITUTUP. Klik untuk Buka Sesi.">
-                                    <i class="fas fa-cash-register fa-fw text-danger"></i> </a>
-                            @endif
+                                        <form id="tutup-kasir-form" action="{{ route('kasir.sesi.tutup') }}"
+                                            method="POST" class="d-none">
+                                            @csrf
+                                        </form>
+                                    </div>
+                                @else
+                                    {{-- JIKA KASIR SEDANG TUTUP --}}
+                                    <a class="nav-link dropdown-toggle" href="#" role="button"
+                                        data-toggle="modal" data-target="#modalBukaKasir" {{-- Memicu Modal --}}
+                                        title="Kasir DITUTUP. Klik untuk Buka Sesi.">
+                                        <i class="fas fa-cash-register fa-fw text-danger"></i> </a>
+                                @endif
 
-                        </li>
+                            </li>
                         @endif
 
                         <div class="topbar-divider d-none d-sm-block"></div>
@@ -276,7 +284,8 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
                                 </a>
                                 <div class="dropdown-divider"></div>
                                 {{-- Tombol Logout --}}
-                                <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
+                                <a class="dropdown-item" href="#" data-toggle="modal"
+                                    data-target="#logoutModal">
                                     <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
                                     Logout
                                 </a>
@@ -323,7 +332,8 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
                     <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
 
                     {{-- PERBAIKAN TOMBOL LOGOUT AGAR SESUAI LARAVEL --}}
-                    <a class="btn btn-primary" href="{{ route('logout') }}" onclick="event.preventDefault();
+                    <a class="btn btn-primary" href="{{ route('logout') }}"
+                        onclick="event.preventDefault();
                                      document.getElementById('logout-form').submit();">
                         Logout
                     </a>
@@ -384,7 +394,7 @@ $sesiKasirAktif = \App\Models\KasirSesi::where('status', 'BUKA')->first();
     <script src="{{ asset('vendor/datatables/dataTables.bootstrap4.min.js') }}"></script>
 
     <script>
-        $(document).ready(function () { });
+        $(document).ready(function() {});
     </script>
 
     @stack('scripts')
