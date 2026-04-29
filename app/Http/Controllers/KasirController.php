@@ -841,6 +841,144 @@ class KasirController extends Controller
         // 8. Tampilkan PDF
         return $pdf->stream('kuitansi-' . $tagihanHead->simgos_tagihan_id . '.pdf');
     }
+
+    public function cetakKuitansiFull(Request $request, $id)
+    {
+        $jenis_kasir = $request->input('jenis_kasir');
+        $jenisList = [
+            1 => 'Rawat Jalan',
+            2 => 'IGD',
+            3 => 'Rawat Inap',
+            4 => 'Laboratorium',
+            5 => 'Radiologi',
+        ];
+        $jenis_kasir_text = $jenisList[$jenis_kasir] ?? 'Tidak diketahui';
+
+        // 1. Ambil data header tagihan
+        $tagihanHead = KasirTagihanHead::findOrFail($id);
+
+        // 2. Tentukan Tipe Kuitansi
+        $routeName = Route::currentRouteName();
+        $tipeKuitansi = $routeName == 'kuitansi.cetak.pasien' ? 'Pasien' : 'Asuransi';
+
+        // 3. Ambil data detail tagihan LOKAL kita
+        $tagihanDetail = KasirTagihanDetail::where('kasir_tagihan_head_id', $id)->get();
+
+        // 4. Lakukan Agregasi (Rekap) - Logika Baru
+        $rekapData = [];
+        $grandTotal = 0;
+
+        // Siapkan array untuk menampung subtotal per kategori
+        $subtotals = [
+            'Administrasi' => 0,
+            'Akomodasi' => 0, //JENIS = 2 BARU DITAMBAH
+            'Pemeriksaan Dokter' => 0, // Dulu Konsultasi (JENIS=3)
+            'Pemeriksaan Radiologi' => 0, // JENIS=7
+            'Pemeriksaan Lab' => 0, // JENIS=8
+            'Tindakan Dokter' => 0, // Default untuk JENIS=3 lainnya
+            'Farmasi' => 0,
+            'Gas Medis' => 0,
+            // Tindakan Keperawatan akan ditangani terpisah
+        ];
+        $tindakanKeperawatan = []; // Array untuk item keperawatan
+
+        foreach ($tagihanDetail as $item) {
+            $nominal = $tipeKuitansi == 'Pasien' ? $item->nominal_ditanggung_pasien : $item->nominal_ditanggung_asuransi;
+
+            // Hanya proses jika nominal > 0
+            if ($nominal <= 0) {
+                continue;
+            }
+
+            // --- Logika Pengelompokan ---
+            switch ($item->simgos_jenis_tarif) {
+                case 1: // Administrasi
+                    $subtotals['Administrasi'] += $nominal;
+                    break;
+
+                case 2: // 🔥 AKOMODASI (RAWAT INAP)
+                    $subtotals['Akomodasi'] += $nominal;
+                    break;
+
+                case 4: // Farmasi
+                    $subtotals['Farmasi'] += $nominal; //Penggantian Biaya Obat ke Farmasi
+                    break;
+
+                case 3: // Tindakan Medis - PERLU DICEK JENISNYA
+                    // Query tambahan untuk mendapatkan JENIS tindakan dari master.tindakan
+                    $tindakanInfo = DB::connection('simgos_pembayaran') // Koneksi bebas, asal bisa join
+                        ->table('layanan.tindakan_medis as tm')
+                        ->join('master.tindakan as t', 't.ID', '=', 'tm.TINDAKAN')
+                        ->where('tm.ID', $item->simgos_ref_id) // Gunakan ref_id dari detail lokal
+                        ->select('t.JENIS as jenis_tindakan', 't.NAMA as nama_tindakan')
+                        ->first(); // Ambil satu baris
+
+                    if ($tindakanInfo) {
+                        switch ($tindakanInfo->jenis_tindakan) {
+                            case 3: // Konsultasi
+                                $subtotals['Pemeriksaan Dokter'] += $nominal;
+                                break;
+                            case 7: // Radiologi
+                                $subtotals['Pemeriksaan Radiologi'] += $nominal;
+                                break;
+                            case 8: // Laboratorium
+                                $subtotals['Pemeriksaan Lab'] += $nominal;
+                                break;
+                            case 5: // Keperawatan - TIDAK DIGABUNG
+                                // Simpan sebagai item terpisah
+                                $tindakanKeperawatan[] = [
+                                    'uraian' => $tindakanInfo->nama_tindakan, // Ambil nama spesifik
+                                    'subtotal' => $nominal,
+                                ];
+                                break;
+                            default:
+                                // Jenis tindakan lain (1, 2, 4, 6, 10, dll)
+                                $subtotals['Tindakan Dokter'] += $nominal;
+                                break;
+                        }
+                    } else {
+                        // Jika info tindakan tidak ditemukan (jarang terjadi), masukkan ke default
+                        $subtotals['Tindakan Dokter'] += $nominal;
+                    }
+                    break;
+
+                case 6: // Oksigen
+                    $subtotals['Gas Medis'] += $nominal;
+                    break;
+
+                default:
+                    // Jika ada jenis tarif lain, bisa ditambahkan di sini
+                    break;
+            }
+            $grandTotal += $nominal; // Tambahkan ke grand total
+        }
+
+        // 5. Format $rekapData untuk View
+        // Gabungkan subtotal yang dikelompokkan
+        foreach ($subtotals as $uraian => $subtotal) {
+            if ($subtotal > 0) {
+                $rekapData[] = ['uraian' => $uraian, 'subtotal' => $subtotal];
+            }
+        }
+        // Tambahkan item keperawatan (jika ada)
+        $rekapData = array_merge($rekapData, $tindakanKeperawatan);
+
+        // 6. Siapkan data untuk dikirim ke View
+        $dataUntukView = [
+            'head' => $tagihanHead,
+            'rekap' => $rekapData,
+            'grandTotal' => $grandTotal,
+            'tipeKuitansi' => $tipeKuitansi,
+            'namaKasir' => Auth::user()->nama,
+            'jenis_kasir_text' => $jenis_kasir_text,
+        ];
+
+        // 7. Load View PDF dan kirim data
+        $pdf = PDF::loadView('reports.kuitansi', $dataUntukView);
+        $pdf->setPaper([0, 0, 612.28, 792], 'portrait');
+        // 8. Tampilkan PDF
+        return $pdf->stream('kuitansi-' . $tagihanHead->simgos_tagihan_id . '.pdf');
+    }
     /**
      * Menyegarkan (refresh) data rincian tagihan dari SIMGOS.
      * Hanya berjalan jika status kasir masih 'draft'.

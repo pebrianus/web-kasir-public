@@ -328,6 +328,18 @@
                             <span class="text">Cetak Rincian Lab</span>
                         </a>
 
+                        <a href="{{ route('kuitansi.cetak.pasien.full', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
+                            target="_blank" {{-- Buka di tab baru --}} class="btn btn-success btn-icon-split btn-block mb-2">
+                            <span class="icon text-white-50"><i class="fas fa-print"></i></span>
+                            <span class="text">Cetak Kuitansi Pasien Full</span>
+                        </a>
+
+                        <a href="{{ route('kuitansi.cetak.asuransi.full', ['id' => $head->id, 'jenis_kasir' => $jenis_kasir]) }}"
+                            target="_blank" {{-- Buka di tab baru --}} class="btn btn-info btn-icon-split btn-block mb-2">
+                            <span class="icon text-white-50"><i class="fas fa-print"></i></span>
+                            <span class="text">Cetak Kuitansi Asuransi Full</span>
+                        </a>
+
                         <hr class="my-4">
                         @if (auth()->user()->role_id != 3)
                             <form action="{{ route('kasir.bayar.batal', ['id' => $head->id]) }}" method="POST"

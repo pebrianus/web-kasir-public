@@ -104,6 +104,15 @@ Route::get('/kuitansi/asuransi/{id}/cetak', [KasirController::class, 'cetakKuita
     ->name('kuitansi.cetak.asuransi')
     ->middleware('auth', 'kasir.jenis');
 
+// --- Rute untuk Kuitansi Full (Kertas Panjang / 11 inch) ---
+Route::get('/kuitansi/pasien/{id}/cetak-full', [KasirController::class, 'cetakKuitansiFull'])
+    ->name('kuitansi.cetak.pasien.full')
+    ->middleware('auth', 'kasir.jenis');
+
+Route::get('/kuitansi/asuransi/{id}/cetak-full', [KasirController::class, 'cetakKuitansiFull'])
+    ->name('kuitansi.cetak.asuransi.full')
+    ->middleware('auth', 'kasir.jenis');
+
 // Rute untuk me-refresh tagihan Simgos
 Route::post('/kasir/refresh-tagihan/{id}', [KasirController::class, 'refreshTagihanSimgos'])
     ->name('kasir.tagihan.refresh')
