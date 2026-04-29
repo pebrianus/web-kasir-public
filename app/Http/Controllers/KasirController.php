@@ -859,7 +859,7 @@ class KasirController extends Controller
 
         // 2. Tentukan Tipe Kuitansi
         $routeName = Route::currentRouteName();
-        $tipeKuitansi = $routeName == 'kuitansi.cetak.pasien' ? 'Pasien' : 'Asuransi';
+        $tipeKuitansi = $routeName == 'kuitansi.cetak.pasien.full' ? 'Pasien' : 'Asuransi';
 
         // 3. Ambil data detail tagihan LOKAL kita
         $tagihanDetail = KasirTagihanDetail::where('kasir_tagihan_head_id', $id)->get();
