@@ -930,22 +930,41 @@ class LaporanJasaController extends Controller
             ->get()
             ->groupBy('TINDAKAN_MEDIS');
 
+
+        // Kelompokkan pendaftaran berdasarkan TAGIHAN
+        $pendaftaranGrouped = $pendaftaran->groupBy('TAGIHAN');
+
+        // Kelompokkan kunjungan berdasarkan NOPEN
+        $kunjunganGrouped = $kunjungan->groupBy('NOPEN');
+
+        // Kelompokkan tindakan berdasarkan KUNJUNGAN
+        $tindakanGrouped = $tindakan->groupBy('KUNJUNGAN');
+
         /* =========================
          * 7. RAKIT LAPORAN
          * ========================= */
-        $laporan = $tagihanHeadDokter->map(function ($tagihan) use ($pendaftaran, $kunjungan, $tindakan, $petugasTindakan, $jenisPetugas, $petugasFilter) {
-            $nopen = $pendaftaran
-                ->where('TAGIHAN', $tagihan->simgos_tagihan_id)
-                ->pluck('PENDAFTARAN');
+        /* =========================
+         * 7. RAKIT LAPORAN (OPTIMIZED)
+         * ========================= */
+        $laporan = $tagihanHeadDokter->map(function ($tagihan) use ($pendaftaranGrouped, $kunjunganGrouped, $tindakanGrouped, $petugasTindakan, $jenisPetugas, $petugasFilter) {
 
-            $kunjunganIds = $kunjungan
-                ->whereIn('NOPEN', $nopen)
-                ->pluck('NOMOR');
+            // Ambil pendaftaran dari data yang sudah dikelompokkan (Sangat Cepat!)
+            $nopen = $pendaftaranGrouped->get($tagihan->simgos_tagihan_id, collect())->pluck('PENDAFTARAN');
 
-            $detailTindakan = $tindakan
-                ->whereIn('KUNJUNGAN', $kunjunganIds)
-                ->map(function ($tdk) use ($petugasTindakan, $jenisPetugas, $petugasFilter) {
+            // Ambil kunjungan yang sesuai
+            $kunjunganIds = collect();
+            foreach ($nopen as $np) {
+                $kunjunganData = $kunjunganGrouped->get($np, collect());
+                $kunjunganIds = $kunjunganIds->merge($kunjunganData->pluck('NOMOR'));
+            }
 
+            // Ambil detail tindakan berdasarkan kunjungan
+            $detailTindakan = collect();
+            foreach ($kunjunganIds as $kunjunganId) {
+                $tindakanList = $tindakanGrouped->get($kunjunganId, collect());
+
+                foreach ($tindakanList as $tdk) {
+                    // Logika Fee
                     if ($jenisPetugas == 1) {
                         $fee = (int) $tdk->DOKTER_OPERATOR;
                     } elseif ($jenisPetugas == 6) {
@@ -954,80 +973,71 @@ class LaporanJasaController extends Controller
                         $fee = (int) $tdk->TARIF;
                     }
 
+                    // Langsung ambil petugas dari array/collection yang di-index ID Tindakan (karena sudah kamu groupBy di Langkah 6)
                     $petugas = isset($petugasTindakan[$tdk->TINDAKAN_MEDIS_ID])
-                        ? $petugasTindakan[$tdk->TINDAKAN_MEDIS_ID]
+                        ? collect($petugasTindakan[$tdk->TINDAKAN_MEDIS_ID])
                         : collect();
 
                     if ($petugasFilter && $petugas->isEmpty()) {
-                        return null;
+                        continue; // Skip
                     }
 
-                    // ⛔ skip tindakan fee 0 saat filter petugas
                     if ($jenisPetugas && $fee <= 0) {
-                        return null;
+                        continue; // Skip
                     }
 
-                    return array(
+                    $mappedPetugas = $petugas->map(function ($p) use ($tdk) {
+                        $feeIndividu = 0;
+                        if ($p->JENIS == 1) {
+                            $feeIndividu = (int) $tdk->DOKTER_OPERATOR;
+                        } elseif ($p->JENIS == 2) {
+                            $feeIndividu = (int) $tdk->DOKTER_ANASTESI;
+                        } elseif ($p->JENIS == 3) {
+                            $feeIndividu = (int) $tdk->PARAMEDIS;
+                        } else {
+                            $feeIndividu = (int) $tdk->TARIF;
+                        }
+
+                        return [
+                            'nama' => $p->NAMA_PETUGAS,
+                            'jenis' => $p->JENIS,
+                            'fee' => $feeIndividu,
+                        ];
+                    })->values();
+
+                    $detailTindakan->push([
                         'nama_tindakan' => $tdk->NAMA_TINDAKAN,
                         'tanggal' => $tdk->TANGGAL,
                         'tarif' => (int) $tdk->TARIF,
                         'fee_petugas' => $fee,
-                        'petugas' => $petugas->map(function ($p) use ($tdk) { // Pastikan ada "use ($tdk)"
+                        'petugas' => $mappedPetugas,
+                    ]);
+                }
+            }
 
-                            $feeIndividu = 0;
-                            if ($p->JENIS == 1) {
-                                $feeIndividu = (int) $tdk->DOKTER_OPERATOR;
-                            } elseif ($p->JENIS == 2) {
-                                $feeIndividu = (int) $tdk->DOKTER_ANASTESI;
-                            } elseif ($p->JENIS == 3) {
-                                $feeIndividu = (int) $tdk->PARAMEDIS;
-                            } else {
-                                $feeIndividu = (int) $tdk->TARIF; // Selain itu seperti biasa
-                            }
-
-                            return array(
-                                'nama' => $p->NAMA_PETUGAS,
-                                'jenis' => $p->JENIS,
-                                'fee' => $feeIndividu, // Masukkan fee yang sudah didapat
-                            );
-                        })->values(),
-                    );
-                })
-                ->filter()
-                ->values();
-
-            // ⛔ skip pasien jika tidak ada fee saat filter petugas
             if ($jenisPetugas && $detailTindakan->isEmpty()) {
                 return null;
             }
 
-            // ==========================================
-            // KODE TAMBAHAN UNTUK CEK TOTAL 0
-            // ==========================================
             $totalTarif = $detailTindakan->sum('tarif');
             $totalFee = $detailTindakan->sum('fee_petugas');
 
-            // ⛔ skip pasien jika total tarif dan fee sama-sama 0
             if ($totalTarif == 0 && $totalFee == 0) {
                 return null;
             }
-            // ==========================================
 
-            // dd($tagihan->simgos_tagihan_id, $nopen, $kunjunganIds, $detailTindakan->toArray());
-            return array(
+            return [
                 'no_rm' => $tagihan->simgos_norm,
                 'nama_pasien' => $tagihan->nama_pasien,
                 'tanggal_tagihan' => $tagihan->simgos_tanggal_tagihan,
                 'nama_asuransi' => $tagihan->nama_asuransi,
-                'tindakan' => $detailTindakan,
-                'total_tarif' => $detailTindakan->sum('tarif'),
-                'total_fee' => $detailTindakan->sum('fee_petugas'),
-            );
-        });
+                'tindakan' => $detailTindakan->values()->toArray(),
+                'total_tarif' => $totalTarif,
+                'total_fee' => $totalFee,
+            ];
+        })->filter()->values();
 
-        // dd($laporan->toArray());
-
-        return $laporan->filter()->values();
+        return $laporan;
     }
 
     public function cetakLaporanJasaDokter()

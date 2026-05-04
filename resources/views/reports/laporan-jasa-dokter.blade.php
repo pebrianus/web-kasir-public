@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Jasa Laboratorium</title>
+    <title>Laporan Jasa Dokter</title>
 
     <style>
         body {
@@ -125,8 +125,12 @@
                         <td colspan="2">
                             @forelse ($tdk['petugas'] as $p)
                                 {{ $p['nama'] }}
-                                <small>
-                                    ({{ $p['jenis'] == 1 ? 'Dokter' : 'Perawat' }})
+                                <small class="text-muted">
+                                    ({{ [1 => 'Dokter', 2 => 'Anastesi', 3 => 'Paramedis'][$p['jenis']] ?? 'Lainnya' }})
+                                    {{-- 👇 TAMPILAN FEE INDIVIDU DENGAN KONDISI 👇 --}}
+                                    @if($p['fee'] > 0)
+                                        - <span class="font-weight-bold">Rp {{ number_format($p['fee'], 0, ',', '.') }}</span>
+                                    @endif
                                 </small><br>
                             @empty
                                 <em>-</em>
@@ -142,32 +146,32 @@
                     $grandTotal += $row['total_fee'];
                 @endphp
 
-                @empty
-                    <tr>
-                        <td colspan="6" class="text-center">
-                            Data tidak ditemukan
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
+            @empty
+                <tr>
+                    <td colspan="6" class="text-center">
+                        Data tidak ditemukan
+                    </td>
+                </tr>
+            @endforelse
+        </tbody>
 
-            @if (count($data))
-                <tfoot>
-                    <tr class="bg-light">
-                        <td colspan="5" class="text-right bold">
-                            TOTAL JASA BERSIH
-                        </td>
-                        <td class="text-right bold">
-                            {{ number_format($grandTotal, 0, ',', '.') }}
-                        </td>
-                    </tr>
-                </tfoot>
-            @endif
-        </table>
+        @if (count($data))
+            <tfoot>
+                <tr class="bg-light">
+                    <td colspan="5" class="text-right bold">
+                        TOTAL JASA BERSIH
+                    </td>
+                    <td class="text-right bold">
+                        {{ number_format($grandTotal, 0, ',', '.') }}
+                    </td>
+                </tr>
+            </tfoot>
+        @endif
+    </table>
 
-        {{-- FOOTER --}}
+    {{-- FOOTER --}}
 
 
-    </body>
+</body>
 
-    </html>
+</html>
