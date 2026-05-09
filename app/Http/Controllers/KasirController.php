@@ -131,7 +131,9 @@ class KasirController extends Controller
             $daftarTagihanQuery->whereIn('t.ID', $lunasIds);
         }
 
-        $daftarTagihan = $daftarTagihanQuery->get();
+        // $daftarTagihan = $daftarTagihanQuery->get();
+        $daftarTagihan = $daftarTagihanQuery->get()->unique('no_tagihan')->values();
+
         // dd($daftarTagihan);
 
         // --- LOGIKA HITUNG DISKON & TOTAL BERSIH ---
@@ -785,12 +787,22 @@ class KasirController extends Controller
                             case 8: // Laboratorium
                                 $subtotals['Pemeriksaan Lab'] += $nominal;
                                 break;
-                            case 5: // Keperawatan - TIDAK DIGABUNG
-                                // Simpan sebagai item terpisah
-                                $tindakanKeperawatan[] = [
-                                    'uraian' => $tindakanInfo->nama_tindakan, // Ambil nama spesifik
-                                    'subtotal' => $nominal,
-                                ];
+                            case 5: // Keperawatan - DIGABUNG JIKA NAMANYA SAMA
+                                $nama_tindakan = $tindakanInfo->nama_tindakan;
+
+                                // Cek apakah tindakan ini sudah ada di array sebelumnya
+                                if (!isset($tindakanKeperawatan[$nama_tindakan])) {
+                                    // Jika belum ada, buat baru
+                                    $tindakanKeperawatan[$nama_tindakan] = [
+                                        'uraian' => $nama_tindakan,
+                                        'qty' => 0, // Tambahkan counter Qty
+                                        'subtotal' => 0,
+                                    ];
+                                }
+
+                                // Tambahkan Qty dan nominalnya
+                                $tindakanKeperawatan[$nama_tindakan]['qty'] += 1;
+                                $tindakanKeperawatan[$nama_tindakan]['subtotal'] += $nominal;
                                 break;
                             default:
                                 // Jenis tindakan lain (1, 2, 4, 6, 10, dll)
@@ -821,8 +833,9 @@ class KasirController extends Controller
                 $rekapData[] = ['uraian' => $uraian, 'subtotal' => $subtotal];
             }
         }
-        // Tambahkan item keperawatan (jika ada)
-        $rekapData = array_merge($rekapData, $tindakanKeperawatan);
+        // Tambahkan item keperawatan (jika ada), reset index dengan array_values
+        $rekapData = array_merge($rekapData, array_values($tindakanKeperawatan));
+        // dd($rekapData);
 
         // 6. Siapkan data untuk dikirim ke View
         $dataUntukView = [
@@ -890,17 +903,22 @@ class KasirController extends Controller
                 continue;
             }
 
+            dump("Memproses Item ID: " . $item->id . " | Jenis Tarif: " . $item->simgos_jenis_tarif);
+
             // --- Logika Pengelompokan ---
             switch ($item->simgos_jenis_tarif) {
                 case 1: // Administrasi
+                    dump("-> Masuk ke Administrasi");
                     $subtotals['Administrasi'] += $nominal;
                     break;
 
                 case 2: // 🔥 AKOMODASI (RAWAT INAP)
+                    dump("-> Masuk ke Akomodasi");
                     $subtotals['Akomodasi'] += $nominal;
                     break;
 
                 case 4: // Farmasi
+                    dump("-> Masuk ke Farmasi");
                     $subtotals['Farmasi'] += $nominal; //Penggantian Biaya Obat ke Farmasi
                     break;
 
@@ -916,15 +934,19 @@ class KasirController extends Controller
                     if ($tindakanInfo) {
                         switch ($tindakanInfo->jenis_tindakan) {
                             case 3: // Konsultasi
+                                dump("-> Masuk ke Pemeriksaan Dokter");
                                 $subtotals['Pemeriksaan Dokter'] += $nominal;
                                 break;
                             case 7: // Radiologi
+                                dump("-> Masuk ke Pemeriksaan Radiologi");
                                 $subtotals['Pemeriksaan Radiologi'] += $nominal;
                                 break;
                             case 8: // Laboratorium
+                                dump("-> Masuk ke Pemeriksaan Lab");
                                 $subtotals['Pemeriksaan Lab'] += $nominal;
                                 break;
                             case 5: // Keperawatan - TIDAK DIGABUNG
+                                dump("-> Masuk ke Tindakan Keperawatan");
                                 // Simpan sebagai item terpisah
                                 $tindakanKeperawatan[] = [
                                     'uraian' => $tindakanInfo->nama_tindakan, // Ambil nama spesifik
@@ -933,6 +955,7 @@ class KasirController extends Controller
                                 break;
                             default:
                                 // Jenis tindakan lain (1, 2, 4, 6, 10, dll)
+                                dump("-> Masuk ke Tindakan Dokter");
                                 $subtotals['Tindakan Dokter'] += $nominal;
                                 break;
                         }
@@ -943,11 +966,13 @@ class KasirController extends Controller
                     break;
 
                 case 6: // Oksigen
+                    dump("-> Masuk ke Gas Medis");
                     $subtotals['Gas Medis'] += $nominal;
                     break;
 
                 default:
                     // Jika ada jenis tarif lain, bisa ditambahkan di sini
+                    dump("-> Jenis Tarif Tidak Dikenal: " . $item->simgos_jenis_tarif);
                     break;
             }
             $grandTotal += $nominal; // Tambahkan ke grand total
@@ -960,6 +985,8 @@ class KasirController extends Controller
                 $rekapData[] = ['uraian' => $uraian, 'subtotal' => $subtotal];
             }
         }
+
+        dd("Proses loop selesai, cek log dump di atas.");
         // Tambahkan item keperawatan (jika ada)
         $rekapData = array_merge($rekapData, $tindakanKeperawatan);
 

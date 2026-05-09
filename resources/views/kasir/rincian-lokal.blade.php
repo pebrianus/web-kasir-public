@@ -95,7 +95,7 @@
                             <div class="d-flex align-items-center">
                                 <i class="fas fa-exclamation-triangle mr-2"></i>
                                 <div>
-                                    <strong>Note: </strong> Rincian tagihan telah dimodifikasi secara manual. Silakan tekan
+                                    <strong>Note: </strong> Rincian tagihan ini telah berubah. Silakan tekan
                                     tombol <strong>Refresh Tagihan</strong> untuk mengambil ulang data dari SIMGOS.
                                 </div>
                             </div>

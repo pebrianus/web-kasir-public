@@ -111,7 +111,18 @@
         }
 
         .rincian-table .uraian {
-            width: 70%;
+            width: 65%;
+            /* Kurangi sedikit lebarnya dari 70% ke 65% */
+        }
+
+        /* TAMBAHKAN CLASS QTY INI */
+        .rincian-table .qty {
+            width: 5%;
+            /* Buat cukup sempit */
+            text-align: right;
+            /* Paksa mepet ke kanan */
+            padding-right: 10px;
+            /* Beri sedikit jarak nafas dengan "Rp" di kolom sebelahnya */
         }
 
         .rincian-table .subtotal {
@@ -179,7 +190,7 @@
         <img src="{{ public_path('images/logo-rs.png') }}" alt="Logo RS" class="logo">
         <div class="rs-info">
             <h4>RS SUAKA INSAN</h4>
-            <p>Jl. Zafri zam zam no. 60 Banjarmasin Kec. Banjarmasin Barat  /   Telp. 0511-3354654</p>
+            <p>Jl. Zafri zam zam no. 60 Banjarmasin Kec. Banjarmasin Barat / Telp. 0511-3354654</p>
         </div>
         <div class="clear"></div>
     </div>
@@ -224,6 +235,7 @@
             <tr>
                 <th class="no">No</th>
                 <th class="uraian">Item Tagihan</th>
+                <th class="qty"></th> {{-- Tambahkan class="qty" di sini --}}
                 <th class="subtotal">Sub Total</th>
             </tr>
         </thead>
@@ -232,11 +244,15 @@
                 <tr>
                     <td class="no">{{ $index + 1 }}</td>
                     <td class="uraian">{{ $item['uraian'] }}</td>
+                    {{-- Hapus style="text-align: center;" dan gunakan class "qty" saja --}}
+                    <td class="qty">
+                        {{ isset($item['qty']) && $item['qty'] > 1 ? $item['qty'] . 'x' : '' }}
+                    </td>
                     <td class="subtotal">Rp. {{ number_format($item['subtotal'], 0, ',', '.') }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="3" style="text-align: center;">(Tidak ada rincian)</td>
+                    <td colspan="4" style="text-align: center;">(Tidak ada rincian)</td>
                 </tr>
             @endforelse
         </tbody>
@@ -293,7 +309,6 @@
                     Rp. {{ number_format($totalBersih, 0, ',', '.') }}
                 </td>
             </tr>
-
         @else
             {{-- Jika Tidak Ada Diskon ATAU Kuitansi Asuransi --}}
             {{-- Baris 3: Langsung Nama Penanggung dengan Total Asli --}}

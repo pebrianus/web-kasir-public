@@ -50,15 +50,10 @@
                             @endforeach
                         </select>
                     </div>
-
-
                     {{-- Dokter / Perawat --}}
                     <div class="col-md-3">
-
-
                         <select name="petugas" id="petugas" class="form-control">
                             <option value="0" data-jenis="">-- Semua Petugas --</option>
-
                             @foreach ($petugasList as $petugas)
                                 <option value="{{ $petugas->ID_PETUGAS }}" data-jenis="{{ $petugas->JENIS }}"
                                     {{ session('laporan_jasa_filter.petugas') == $petugas->ID_PETUGAS ? 'selected' : '' }}>
@@ -69,11 +64,7 @@
 
                         <input type="hidden" name="jenis_petugas" id="jenis_petugas"
                             value="{{ session('laporan_jasa_filter.jenis_petugas') }}">
-
                     </div>
-
-
-
                     {{-- Tombol --}}
                     <div class="col-md-12 mt-3">
                         <div class="d-flex justify-content-between align-items-center">
@@ -151,8 +142,9 @@
                                                 <small class="text-muted">
                                                     ({{ [1 => 'Dokter', 2 => 'Anastesi', 3 => 'Paramedis'][$p['jenis']] ?? 'Lainnya' }})
                                                     {{-- 👇 TAMPILAN FEE INDIVIDU DENGAN KONDISI 👇 --}}
-                                                    @if($p['fee'] > 0)
-                                                        - <span class="font-weight-bold">Rp {{ number_format($p['fee'], 0, ',', '.') }}</span>
+                                                    @if ($p['fee'] > 0)
+                                                        - <span class="font-weight-bold">Rp
+                                                            {{ number_format($p['fee'], 0, ',', '.') }}</span>
                                                     @endif
                                                 </small>
 
