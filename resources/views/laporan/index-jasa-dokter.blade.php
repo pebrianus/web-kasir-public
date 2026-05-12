@@ -120,9 +120,14 @@
 
                             {{-- KANAN: Cetak --}}
                             <div>
-                                <a href="{{ route('laporan.jasa.dokter.cetak') }}" target="_blank"
+                                <a href="{{ route('laporan.jasa.dokter.cetak', ['format' => 1]) }}" target="_blank"
                                     class="btn btn-success btn-sm">
-                                    <i class="fas fa-print fa-sm me-1"></i> Cetak
+                                    <i class="fas fa-print fa-sm me-1"></i> Format 1
+                                </a>
+
+                                <a href="{{ route('laporan.jasa.dokter.cetak', ['format' => 2]) }}" target="_blank"
+                                    class="btn btn-success btn-sm">
+                                    <i class="fas fa-print fa-sm me-1"></i> Format 2
                                 </a>
                             </div>
                         </div>
@@ -182,8 +187,9 @@
                                                 <small class="text-muted">
                                                     ({{ [1 => 'Dokter', 2 => 'Anastesi', 3 => 'Paramedis'][$p['jenis']] ?? 'Lainnya' }})
                                                     {{-- 👇 TAMPILAN FEE INDIVIDU DENGAN KONDISI 👇 --}}
-                                                    @if($p['fee'] > 0)
-                                                        - <span class="font-weight-bold">Rp {{ number_format($p['fee'], 0, ',', '.') }}</span>
+                                                    @if ($p['fee'] > 0)
+                                                        - <span class="font-weight-bold">Rp
+                                                            {{ number_format($p['fee'], 0, ',', '.') }}</span>
                                                     @endif
                                                 </small>
 

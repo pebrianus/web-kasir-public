@@ -128,7 +128,7 @@
                                 <small class="text-muted">
                                     ({{ [1 => 'Dokter', 2 => 'Anastesi', 3 => 'Paramedis'][$p['jenis']] ?? 'Lainnya' }})
                                     {{-- 👇 TAMPILAN FEE INDIVIDU DENGAN KONDISI 👇 --}}
-                                    @if($p['fee'] > 0)
+                                    @if($p['fee'] > 0 && $format == 2)
                                         - <span class="font-weight-bold">Rp {{ number_format($p['fee'], 0, ',', '.') }}</span>
                                     @endif
                                 </small><br>

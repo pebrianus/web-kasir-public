@@ -1040,8 +1040,12 @@ class LaporanJasaController extends Controller
         return $laporan;
     }
 
-    public function cetakLaporanJasaDokter()
+    public function cetakLaporanJasaDokter(Request $request)
     {
+
+        // Jika parameter format tidak ada di URL, otomatis set ke 1
+        $format = $request->query('format', 1);
+
         $filter = session('laporan_jasa_dokter_filter', []);
         $tanggalDari = isset($filter['tanggal_dari'])
             ? $filter['tanggal_dari']
@@ -1059,20 +1063,7 @@ class LaporanJasaController extends Controller
             ? $filter['petugas']
             : null;
 
-        // ambil data laporan
         $data = $this->buildLaporanJasaDokter($filter);
-
-        // ===============================
-        // TESTING PDF: DUPLIKAT DATA 30x
-        // ===============================
-        // $testingMultiply = 30;
-
-        // $data = collect(range(1, $testingMultiply))
-        //     ->flatMap(function () use ($data) {
-        //         return $data;
-        //     })
-        //     ->values();
-
 
         $pdf = Pdf::loadView('reports.laporan-jasa-dokter', [
             'data' => $data,
@@ -1080,6 +1071,7 @@ class LaporanJasaController extends Controller
             'tanggalSampai' => $tanggalSampai,
             'asuransi' => $asuransi,
             'petugas' => $petugas,
+            'format' => $format,
         ])->setPaper('A4', 'portrait');
 
         $namaFile = 'Laporan-Jasa-Dokter-' .
