@@ -50,8 +50,10 @@
                             @endforeach
                         </select>
                     </div>
+
                     {{-- Dokter / Perawat --}}
                     <div class="col-md-3">
+                        <label for="petugas" class="small">Dokter / Petugas</label>
                         <select name="petugas" id="petugas" class="form-control">
                             <option value="0" data-jenis="">-- Semua Petugas --</option>
                             @foreach ($petugasList as $petugas)
@@ -65,6 +67,39 @@
                         <input type="hidden" name="jenis_petugas" id="jenis_petugas"
                             value="{{ session('laporan_jasa_filter.jenis_petugas') }}">
                     </div>
+
+                    {{-- Tindakan  --}}
+                    <div class="col-md-3 mt-3">
+                        <label class="small">Tindakan</label>
+                        <select class="form-control" name="tindakan">
+                            {{-- Set 'Semua' sebagai default fallback jika session kosong --}}
+                            <option value="Semua"
+                                {{ session('laporan_jasa_filter.tindakan', 'Semua') == 'Semua' ? 'selected' : '' }}>
+                                -- Semua Tindakan --
+                            </option>
+
+                            <option value="MRI"
+                                {{ session('laporan_jasa_filter.tindakan') == 'MRI' ? 'selected' : '' }}>
+                                MRI
+                            </option>
+
+                            <option value="MSCT"
+                                {{ session('laporan_jasa_filter.tindakan') == 'MSCT' ? 'selected' : '' }}>
+                                CT Scan
+                            </option>
+
+                            <option value="THORAX"
+                                {{ session('laporan_jasa_filter.tindakan') == 'THORAX' ? 'selected' : '' }}>
+                                Rontgen
+                            </option>
+
+                            <option value="USG"
+                                {{ session('laporan_jasa_filter.tindakan') == 'USG' ? 'selected' : '' }}>
+                                USG
+                            </option>
+                        </select>
+                    </div>
+
                     {{-- Tombol --}}
                     <div class="col-md-12 mt-3">
                         <div class="d-flex justify-content-between align-items-center">
@@ -87,7 +122,6 @@
                             </div>
                         </div>
                     </div>
-
 
                 </div>
             </form>

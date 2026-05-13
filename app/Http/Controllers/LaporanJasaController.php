@@ -77,6 +77,8 @@ class LaporanJasaController extends Controller
         $asuransi = isset($filter['asuransi']) ? $filter['asuransi'] : null;
         $petugasFilter = isset($filter['petugas']) ? $filter['petugas'] : null;
         $jenisPetugas = isset($filter['jenis_petugas']) ? $filter['jenis_petugas'] : null;
+        $tindakanFilter = isset($filter['tindakan']) ? $filter['tindakan'] : null;
+        // dd($tindakan); // Debug untuk melihat nilai filter tindakan yang diterima
 
         /* =========================
          * 1. TAGIHAN KASIR (LUNAS)
@@ -142,30 +144,33 @@ class LaporanJasaController extends Controller
          * 4 & 5. TINDAKAN & TARIF HISTORIS (Saat Pasien Ditagih)
          * ========================= */
 
-        // Block $tarifTerbaru sudah dihapus
-
-        $tindakan = TindakanMedis::join(DB::raw('master.tindakan as t'), 't.ID', '=', 'tindakan_medis.TINDAKAN')
+        $queryTindakan = TindakanMedis::join(DB::raw('master.tindakan as t'), 't.ID', '=', 'tindakan_medis.TINDAKAN')
             // 1. Join ke rincian_tagihan untuk mengunci nota transaksi
             ->leftJoin('pembayaran.rincian_tagihan as rt', function ($join) {
                 $join->on('rt.REF_ID', '=', 'tindakan_medis.ID')
                     ->where('rt.JENIS', 3);
-                // Catatan: Pastikan JENIS = 3 di tabel referensi kalian memang merujuk ke Tindakan Medis/Lab.
             })
             // 2. Join ke master tarif menggunakan TARIF_ID dari rincian_tagihan
             ->leftJoin('master.tarif_tindakan as tt', 'tt.ID', '=', 'rt.TARIF_ID')
             ->whereIn('tindakan_medis.KUNJUNGAN', $kunjungan->pluck('NOMOR'))
-            ->where('tindakan_medis.STATUS', 1) // Filter tindakan aktif
-            ->select(array(
-                'tindakan_medis.ID as TINDAKAN_MEDIS_ID',
-                'tindakan_medis.KUNJUNGAN',
-                't.NAMA as NAMA_TINDAKAN',
-                'tindakan_medis.TANGGAL',
+            ->where('tindakan_medis.STATUS', 1); // Filter tindakan aktif
 
-                // Nilai ini sekarang adalah harga riwayat (historis)
-                'tt.DOKTER_OPERATOR',
-                'tt.PARAMEDIS',
-                'tt.TARIF',
-            ))
+        // Pengkondisian Filter Tindakan menggunakan LIKE pada tabel master.tindakan (alias t)
+        if ($tindakanFilter && $tindakanFilter !== 'Semua') {
+            $queryTindakan->where('t.NAMA', 'LIKE', '%' . $tindakanFilter . '%');
+        }
+
+        $tindakan = $queryTindakan->select(array(
+            'tindakan_medis.ID as TINDAKAN_MEDIS_ID',
+            'tindakan_medis.KUNJUNGAN',
+            't.NAMA as NAMA_TINDAKAN',
+            'tindakan_medis.TANGGAL',
+
+            // Nilai ini sekarang adalah harga riwayat (historis)
+            'tt.DOKTER_OPERATOR',
+            'tt.PARAMEDIS',
+            'tt.TARIF',
+        ))
             ->get();
 
         /* =========================
@@ -320,6 +325,7 @@ class LaporanJasaController extends Controller
                     'asuransi',
                     'petugas',
                     'jenis_petugas',
+                    'tindakan',
                 ))
             ));
 
