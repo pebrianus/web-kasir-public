@@ -116,8 +116,14 @@
 
                             {{-- KANAN: Cetak --}}
                             <div>
-                                <a href="{{ route('laporan.jasa.cetak') }}" target="_blank" class="btn btn-success btn-sm">
-                                    <i class="fas fa-print fa-sm me-1"></i> Cetak
+                                <a href="{{ route('laporan.jasa.cetak', ['format' => 1]) }}" target="_blank"
+                                    class="btn btn-success btn-sm">
+                                    <i class="fas fa-print fa-sm me-1"></i> Format 1
+                                </a>
+
+                                <a href="{{ route('laporan.jasa.cetak', ['format' => 2]) }}" target="_blank"
+                                    class="btn btn-success btn-sm">
+                                    <i class="fas fa-print fa-sm me-1"></i> Format 2
                                 </a>
                             </div>
                         </div>

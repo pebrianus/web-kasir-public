@@ -230,12 +230,13 @@ class LaporanJasaController extends Controller
                 ->whereIn('KUNJUNGAN', $kunjunganIds)
                 ->map(function ($tdk) use ($petugasTindakan, $jenisPetugas, $petugasFilter) {
 
+                    // 1. Buat variabel khusus untuk mengecek apakah fee petugas spesifik tersebut 0
                     if ($jenisPetugas == 1) {
-                        $fee = (int) $tdk->DOKTER_OPERATOR;
+                        $feePengecekan = (int) $tdk->DOKTER_OPERATOR;
                     } elseif ($jenisPetugas == 3) {
-                        $fee = (int) $tdk->PARAMEDIS;
+                        $feePengecekan = (int) $tdk->PARAMEDIS;
                     } else {
-                        $fee = (int) $tdk->TARIF;
+                        $feePengecekan = (int) $tdk->TARIF;
                     }
 
                     $petugas = isset($petugasTindakan[$tdk->TINDAKAN_MEDIS_ID])
@@ -247,7 +248,8 @@ class LaporanJasaController extends Controller
                     }
 
                     // ⛔ skip tindakan fee 0 saat filter petugas
-                    if ($jenisPetugas && $fee <= 0) {
+                    // Menggunakan $feePengecekan agar logika filter tidak bocor/rusak
+                    if ($jenisPetugas && $feePengecekan <= 0) {
                         return null;
                     }
 
@@ -255,12 +257,13 @@ class LaporanJasaController extends Controller
                         'nama_tindakan' => $tdk->NAMA_TINDAKAN,
                         'tanggal' => $tdk->TANGGAL,
                         'tarif' => (int) $tdk->TARIF,
-                        'fee_petugas' => $fee,
-                        // 👇 INI BAGIAN YANG DIUPDATE 👇
-                        'petugas' => $petugas->map(function ($p) use ($tdk) { // Pastikan ada "use ($tdk)"
+
+                        // 👇 UBAH DI SINI: Tetapkan selalu mengambil TARIF agar konsisten (700.000)
+                        'fee_petugas' => (int) $tdk->TARIF,
+
+                        'petugas' => $petugas->map(function ($p) use ($tdk) {
 
                             $feeIndividu = 0;
-                            // Menyesuaikan dengan query petugas di Radiologi (Jenis 1 = Dokter, Jenis 3 = Paramedis)
                             if ($p->JENIS == 1) {
                                 $feeIndividu = (int) $tdk->DOKTER_OPERATOR;
                             } elseif ($p->JENIS == 3) {
@@ -272,7 +275,7 @@ class LaporanJasaController extends Controller
                             return array(
                                 'nama' => $p->NAMA_PETUGAS,
                                 'jenis' => $p->JENIS,
-                                'fee' => $feeIndividu, // Masukkan fee individu
+                                'fee' => $feeIndividu, // Fee individu dokter tetap 300.000 di dalam array ini
                             );
                         })->values(),
                     );
@@ -344,8 +347,10 @@ class LaporanJasaController extends Controller
         ));
     }
 
-    public function cetakLaporanJasa()
+    public function cetakLaporanJasa(Request $request)
     {
+        $format = $request->query('format', 1);
+
         $filter = session('laporan_jasa_filter', []);
 
         $tanggalDari = isset($filter['tanggal_dari'])
@@ -385,6 +390,7 @@ class LaporanJasaController extends Controller
             'tanggalSampai' => $tanggalSampai,
             'asuransi' => $asuransi,
             'petugas' => $petugas,
+            'format' => $format,
         ])->setPaper('A4', 'portrait');
 
         $namaFile = 'Laporan-Jasa-Radiologi-' .
