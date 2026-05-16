@@ -55,6 +55,7 @@
                     {{-- Dokter / Perawat --}}
                     <div class="col-md-3">
 
+                        <label class="small">Petugas</label>
 
                         <select name="petugas" id="petugas" class="form-control">
                             <option value="0" data-jenis="">-- Semua Petugas --</option>
